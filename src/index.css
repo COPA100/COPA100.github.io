@@ -1,0 +1,835 @@
+@import 'tailwindcss';
+
+:root {
+  --bone: #e9e4d8;
+  --bone-2: #c9c4b8;
+  --ash: #8e8a82;
+  --accent: #ff3b21;
+  --display: 'Big Shoulders Display Variable', 'Arial Narrow', sans-serif;
+  --sign: 'Overpass Variable', 'Helvetica Neue', Arial, sans-serif;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --pad: clamp(18px, 2.4vw, 36px);
+}
+
+html,
+body {
+  background: #000;
+  color: var(--bone);
+  font-family: var(--sign);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+body {
+  overscroll-behavior-y: none;
+}
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+::selection {
+  background: var(--accent);
+  color: #000;
+}
+:focus-visible {
+  outline: 2px solid var(--bone);
+  outline-offset: 4px;
+}
+
+.stage {
+  position: fixed !important;
+  inset: 0 0 auto 0;
+  width: 100% !important;
+  height: 100lvh !important;
+  z-index: 0;
+}
+.track {
+  position: relative;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ---------- Opening ---------- */
+
+.hero {
+  position: fixed;
+  left: var(--pad);
+  top: calc(var(--pad) + 44px);
+  z-index: 6;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.hero-name {
+  font-family: var(--display);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: clamp(88px, 12.4vw, 228px);
+  line-height: 0.8;
+  letter-spacing: -0.005em;
+  display: flex;
+  flex-direction: column;
+  color: var(--bone);
+}
+.hero-line {
+  display: block;
+  clip-path: inset(-0.1em -0.1em 0 -0.1em);
+}
+.hero-line {
+  animation: rise 1100ms var(--ease-out) both;
+}
+.hero-line + .hero-line {
+  animation-delay: 90ms;
+}
+.hero-role {
+  margin-top: clamp(18px, 2.2vw, 30px);
+  font-family: var(--sign);
+  font-weight: 500;
+  font-size: clamp(19px, 1.65vw, 26px);
+  letter-spacing: -0.005em;
+  color: var(--bone);
+  animation: fade 900ms 260ms var(--ease-out) both;
+}
+.hero-line-copy {
+  margin-top: 8px;
+  max-width: 25em;
+  font-size: clamp(15px, 1.1vw, 17px);
+  line-height: 1.5;
+  color: var(--bone-2);
+  text-wrap: pretty;
+  animation: fade 900ms 420ms var(--ease-out) both;
+}
+.hero-cue {
+  margin-top: 26px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--ash);
+  animation: fade 900ms 1500ms var(--ease-out) both;
+}
+.hero-cue-key {
+  width: 1px;
+  height: 22px;
+  background: linear-gradient(var(--bone), transparent);
+  transform-origin: top;
+  animation: cue 2200ms 2000ms var(--ease-in-out) infinite;
+}
+@keyframes rise {
+  from {
+    transform: translateY(0.62em);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes cue {
+  0% {
+    transform: scaleY(0);
+  }
+  45% {
+    transform: scaleY(1);
+  }
+  100% {
+    transform: scaleY(1) translateY(22px);
+    opacity: 0;
+  }
+}
+
+/* ---------- Top bar ---------- */
+
+.topbar {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 8;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: calc(var(--pad) - 4px) var(--pad);
+  pointer-events: none;
+}
+.topbar a {
+  pointer-events: auto;
+}
+.topbar-name {
+  font-family: var(--display);
+  font-weight: 750;
+  text-transform: uppercase;
+  font-size: 21px;
+  letter-spacing: 0.01em;
+  opacity: 0;
+}
+.topbar-link,
+.contact-link {
+  position: relative;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--bone);
+  padding: 6px 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: color 180ms ease;
+}
+.topbar-link span,
+.contact-link span {
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0% 1px no-repeat;
+  padding-bottom: 3px;
+  transition: background-size 320ms var(--ease-out);
+}
+.topbar-link span {
+  background-size: 100% 1px;
+  background-image: linear-gradient(rgb(233 228 216 / 0.35), rgb(233 228 216 / 0.35));
+}
+@media (hover: hover) and (pointer: fine) {
+  .topbar-link:hover span {
+    background-image: linear-gradient(var(--accent), var(--accent));
+  }
+  .contact-link:hover span {
+    background-size: 100% 1px;
+  }
+}
+.topbar-link:active,
+.contact-link:active {
+  transform: scale(0.97);
+}
+
+/* ---------- Instrument cluster ---------- */
+
+.cluster {
+  position: fixed;
+  left: var(--pad);
+  bottom: var(--pad);
+  z-index: 6;
+  display: flex;
+  gap: 34px;
+  opacity: 0;
+  pointer-events: none;
+}
+.gauge {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  column-gap: 7px;
+  row-gap: 9px;
+  width: 128px;
+}
+.gauge-value {
+  font-family: var(--display);
+  font-weight: 650;
+  font-size: 46px;
+  line-height: 0.8;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  min-width: 2ch;
+}
+.gauge-unit {
+  font-size: 13px;
+  color: var(--ash);
+  font-weight: 500;
+}
+.gauge-bar {
+  grid-column: 1 / -1;
+  position: relative;
+  height: 1px;
+  background: rgb(233 228 216 / 0.22);
+  overflow: hidden;
+}
+.gauge-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--bone);
+  transform-origin: 0 50%;
+  transform: scaleX(0.003);
+}
+.gauge-fill.is-accent {
+  background: var(--accent);
+}
+
+/* ---------- Signs: real HTML pinned to their 3D faces ---------- */
+
+.sign-layer {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 100lvh;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+.sign {
+  --lit: 0;
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  backface-visibility: hidden;
+  pointer-events: none;
+  opacity: 0;
+  color: var(--bone);
+  background: #060606;
+  border-radius: 26px;
+  /* The retroreflective border flares when the beam lands on it. */
+  box-shadow:
+    inset 0 0 0 18px #060606,
+    inset 0 0 0 24px rgb(233 228 216 / calc(0.55 + var(--lit) * 0.45));
+  font-family: var(--sign);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sign::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 70%, rgb(255 250 240 / 0.08), transparent 70%);
+  opacity: var(--lit);
+}
+.sign > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Project board: name, one line, at most one figure, a quiet stack and the way out. */
+.sign--project {
+  padding: 92px 112px 96px;
+}
+.sign-top {
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  height: 84px;
+}
+.sign-hairpin {
+  width: 66px;
+  height: 82px;
+  color: var(--bone);
+}
+.sign-aside {
+  font-weight: 600;
+  font-size: 44px;
+  letter-spacing: 0.005em;
+  color: var(--ash);
+  padding-top: 8px;
+}
+.sign-name {
+  margin: 44px 0 0 -8px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 262px;
+  line-height: 0.8;
+  letter-spacing: -0.012em;
+  white-space: nowrap;
+}
+.sign-name.is-long {
+  font-size: 214px;
+}
+.sign-line {
+  margin-top: 46px;
+  font-weight: 500;
+  font-size: 60px;
+  line-height: 1.14;
+  letter-spacing: -0.012em;
+  max-width: 19.5em;
+  text-wrap: pretty;
+}
+.sign-figure {
+  margin-top: 54px;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+.sign-figure b {
+  font-family: var(--display);
+  font-weight: 750;
+  font-size: 148px;
+  line-height: 0.8;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  padding-top: 12px;
+}
+.sign-figure span {
+  font-size: 38px;
+  line-height: 1.18;
+  font-weight: 500;
+  color: var(--bone-2);
+  max-width: 15em;
+  border-left: 4px solid rgb(233 228 216 / 0.28);
+  padding-left: 36px;
+}
+.sign-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 40px;
+}
+.sign-stack {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 38px;
+  font-size: 34px;
+  font-weight: 500;
+  color: var(--ash);
+}
+.sign-link {
+  flex: none;
+  display: inline-block;
+  position: relative;
+  font-weight: 700;
+  font-size: 40px;
+  color: #060606;
+  background: var(--bone);
+  border-radius: 14px;
+  padding: 20px 32px 13px;
+  overflow: hidden;
+  isolation: isolate;
+  pointer-events: auto;
+  transition:
+    transform 160ms var(--ease-out),
+    color 200ms ease;
+}
+/* The accent floods in from the left: the only colour on the whole sign. */
+.sign-link::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 320ms var(--ease-out);
+}
+.sign-link:active {
+  transform: scale(0.97);
+}
+.sign-link:focus-visible {
+  outline: 8px solid var(--bone);
+  outline-offset: 10px;
+}
+.sign-link:focus-visible::before {
+  transform: scaleX(1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .sign-link:hover {
+    color: #000;
+  }
+  .sign-link:hover::before {
+    transform: scaleX(1);
+  }
+}
+
+/* Portrait board: the same sign, stacked for a phone held upright. */
+.sign--project.is-portrait {
+  padding: 84px 76px 80px;
+}
+.sign--project.is-portrait .sign-name {
+  margin-top: 40px;
+  font-size: 200px;
+  white-space: normal;
+  line-height: 0.82;
+}
+.sign--project.is-portrait .sign-name.is-long {
+  font-size: 176px;
+}
+.sign--project.is-portrait .sign-line {
+  font-size: 58px;
+  margin-top: 44px;
+}
+.sign--project.is-portrait .sign-figure {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 22px;
+  margin-top: 56px;
+}
+.sign--project.is-portrait .sign-figure span {
+  border-left: 0;
+  padding-left: 0;
+  font-size: 40px;
+}
+.sign--project.is-portrait .sign-foot {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 34px;
+}
+.sign--project.is-portrait .sign-stack {
+  font-size: 36px;
+  padding: 0;
+}
+.sign--project.is-portrait .sign-link {
+  font-size: 38px;
+  white-space: nowrap;
+}
+
+/* The note: credit and the longer story, only while the car waits under the board. */
+.notes {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+.note {
+  --k: 0;
+  position: absolute;
+  right: var(--pad);
+  bottom: calc(var(--pad) + 4px);
+  width: min(400px, 30vw);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate3d(0, calc((1 - var(--k)) * 10px), 0);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--bone-2);
+  text-wrap: pretty;
+}
+.note-credit {
+  color: var(--bone);
+  font-weight: 600;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgb(233 228 216 / 0.18);
+}
+.reduced .note {
+  transform: none;
+}
+/* Upright screens: the note sits along the bottom edge, where the gauges were. */
+@media (orientation: portrait) and (max-width: 1099px) {
+  .note {
+    left: var(--pad);
+    right: var(--pad);
+    bottom: max(env(safe-area-inset-bottom), var(--pad));
+    width: auto;
+    max-width: 34em;
+    font-size: 14px;
+    isolation: isolate;
+  }
+  /* A soft fall-off behind the text, so it reads over the lit road and the taillights. */
+  .note::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: -72px calc(-1 * var(--pad)) calc(-1 * var(--pad) - 20px);
+    background: linear-gradient(to top, rgb(0 0 0 / 0.82) 40%, rgb(0 0 0 / 0));
+  }
+}
+@media (max-width: 699px) {
+  .note-body {
+    display: none;
+  }
+  .note-credit {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    font-weight: 500;
+    color: var(--bone-2);
+  }
+}
+
+/* Experience markers: small boards on the cut bank of the final traverse. */
+.sign--marker {
+  padding: 56px 64px;
+  align-content: center;
+  border-radius: 16px;
+  box-shadow:
+    inset 0 0 0 12px #070707,
+    inset 0 0 0 16px rgb(233 228 216 / calc(0.45 + var(--lit) * 0.55));
+}
+.marker-when {
+  font-size: 32px;
+  color: var(--ash);
+  font-weight: 500;
+}
+.marker-org {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 128px;
+  line-height: 0.86;
+  margin: 18px 0 14px -3px;
+  letter-spacing: -0.01em;
+}
+.marker-role {
+  font-size: 42px;
+  font-weight: 600;
+  line-height: 1.12;
+}
+.marker-note {
+  margin-top: 22px;
+  font-size: 37px;
+  line-height: 1.22;
+  color: var(--bone-2);
+  max-width: 21em;
+}
+.sign--marker.is-portrait {
+  padding: 60px 56px;
+}
+.sign--marker.is-portrait .marker-org {
+  font-size: 118px;
+}
+.sign--marker.is-portrait .marker-role {
+  font-size: 46px;
+}
+.sign--marker.is-portrait .marker-note {
+  font-size: 42px;
+}
+
+/* ---------- Survey map ---------- */
+
+.map-labels {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.map-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--bone);
+  cursor: pointer;
+  font-family: var(--sign);
+}
+.map-label i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #000;
+  box-shadow: inset 0 0 0 2px var(--accent);
+  margin-left: -4.5px;
+  transition: background-color 180ms ease;
+}
+.map-label span {
+  font-size: 13px;
+  font-weight: 600;
+  background: #000;
+  padding: 4px 7px 2px;
+  border-radius: 3px;
+  transition: color 180ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .map-label:hover i {
+    background: var(--accent);
+  }
+}
+
+.contact {
+  position: fixed;
+  left: var(--pad);
+  bottom: var(--pad);
+  z-index: 7;
+  width: min(660px, calc(100% - 2 * var(--pad)));
+  pointer-events: none;
+  visibility: hidden;
+  transition: visibility 0s 500ms;
+}
+.contact.is-live {
+  pointer-events: auto;
+  visibility: visible;
+  transition: visibility 0s;
+}
+.contact-block {
+  background: #000;
+  border: 1px solid rgb(233 228 216 / 0.2);
+  border-radius: 4px;
+  padding: clamp(24px, 3vw, 40px);
+}
+.contact [data-rise] {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 380ms ease,
+    transform 380ms var(--ease-out);
+}
+.contact.is-live [data-rise] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 700ms ease,
+    transform 900ms var(--ease-out);
+}
+.contact.is-live [data-rise]:nth-child(2) {
+  transition-delay: 70ms;
+}
+.contact.is-live [data-rise]:nth-child(3) {
+  transition-delay: 140ms;
+}
+.contact.is-live [data-rise]:nth-child(4) {
+  transition-delay: 210ms;
+}
+.contact-kicker {
+  font-size: 15px;
+  color: var(--ash);
+  font-weight: 500;
+}
+.contact-mail {
+  display: inline-block;
+  margin-top: 10px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(40px, 4.6vw, 72px);
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  background: linear-gradient(var(--accent), var(--accent)) 0 100% / 0% 3px no-repeat;
+  padding-bottom: 6px;
+  transition: background-size 420ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .contact-mail:hover {
+    background-size: 100% 3px;
+  }
+}
+.contact-links {
+  margin-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 28px;
+}
+.contact-resume {
+  margin-left: auto;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 11px 20px 9px;
+  border: 1px solid var(--bone);
+  border-radius: 3px;
+  transition:
+    background-color 200ms ease,
+    color 200ms ease,
+    border-color 200ms ease,
+    transform 160ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .contact-resume:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+  }
+}
+.contact-resume:active {
+  transform: scale(0.97);
+}
+.contact-foot {
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid rgb(233 228 216 / 0.14);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  font-size: 13px;
+  color: var(--ash);
+}
+.contact-scale {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+.contact-scale-bar {
+  display: block;
+  height: 5px;
+  border: 1px solid var(--ash);
+  border-top: 0;
+  width: 80px;
+}
+
+@media (orientation: portrait) and (min-width: 700px) {
+  .hero-name {
+    font-size: clamp(120px, 21vw, 240px);
+  }
+  .hero-role {
+    font-size: 28px;
+  }
+}
+
+/* ---------- Phone ---------- */
+
+@media (max-width: 699px) {
+  .hero {
+    top: calc(var(--pad) + 36px);
+  }
+  .hero-name {
+    font-size: clamp(84px, 30vw, 132px);
+  }
+  .cluster {
+    gap: 22px;
+    bottom: max(env(safe-area-inset-bottom), 18px);
+  }
+  .gauge {
+    width: 92px;
+  }
+  .gauge-value {
+    font-size: 34px;
+  }
+  .contact-links {
+    gap: 4px 22px;
+  }
+  .contact-mail {
+    font-size: clamp(28px, 7.7vw, 40px);
+  }
+  .contact-resume {
+    margin-left: 0;
+  }
+  .contact-foot {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .map-label span {
+    font-size: 12px;
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+
+.reduced .hero-line,
+.reduced .hero-role,
+.reduced .hero-line-copy,
+.reduced .hero-cue {
+  animation-name: fade-only;
+}
+.reduced .hero-cue-key {
+  animation: none;
+}
+@keyframes fade-only {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .contact [data-rise] {
+    transform: none !important;
+  }
+}

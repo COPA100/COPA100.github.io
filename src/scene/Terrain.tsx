@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { invalidate, useFrame } from '@react-three/fiber'
-import { quality } from '../lib/tier'
 import { U, drive } from '../lib/state'
-import { buildCoarse, buildStrip, type Buffers } from '../world/build'
-import TerrainWorker from '../world/terrain.worker.ts?worker'
+import type { Buffers } from '../world/build'
+import { terrainJob } from '../world/terrainJob'
 import { COMMON } from './glsl'
 import { CLOUD_Y } from '../world/terrain'
 
@@ -132,20 +131,15 @@ export function Terrain() {
       drive.ready = true
       invalidate()
     }
-    let worker: Worker | null = null
-    const local = () => done(buildCoarse(quality.segments), buildStrip(quality.stripStep, quality.stripCols))
-    try {
-      worker = new TerrainWorker()
-      worker.onmessage = (e) => {
-        ;(window as unknown as { __terrainMs: number }).__terrainMs = e.data.ms
-        done(e.data.coarse, e.data.strip)
-      }
-      worker.onerror = local
-      worker.postMessage({ segments: quality.segments, step: quality.stripStep, cols: quality.stripCols })
-    } catch {
-      local()
+    let live = true
+    terrainJob.then((t) => {
+      if (!live) return
+      ;(window as unknown as { __terrainMs: number }).__terrainMs = t.ms
+      done(t.coarse, t.strip)
+    })
+    return () => {
+      live = false
     }
-    return () => worker?.terminate()
   }, [coarse, strip])
 
   const stripRef = useRef<THREE.Mesh>(null)

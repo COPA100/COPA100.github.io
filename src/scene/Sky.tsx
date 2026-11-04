@@ -13,7 +13,7 @@ const meteor = {
   uMT: { value: 0 },
   uMI: { value: 0 },
 }
-const M_START = 2.35
+const M_START = 1.9
 const M_LEN = 0.85
 const fwd = new THREE.Vector3()
 const right = new THREE.Vector3()

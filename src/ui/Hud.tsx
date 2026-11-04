@@ -13,6 +13,14 @@ export function Hero() {
   useEffect(() => {
     const tick = () => {
       if (!ref.current) return
+      // The loader steps aside the moment the mountain is built: its rings open out into the pulse.
+      if (drive.ready) {
+        const boot = document.getElementById('boot')
+        if (boot && !boot.classList.contains('done')) {
+          boot.classList.add('done')
+          setTimeout(() => boot.remove(), 800)
+        }
+      }
       // The title waits in the dark and comes up with the headlights.
       if (drive.lit && !ref.current.classList.contains('is-lit')) ref.current.classList.add('is-lit')
       // The credit clears as the car pulls away, a little faster than the scroll.
@@ -108,8 +116,17 @@ export function TopBar() {
     gsap.ticker.add(tick)
     return () => gsap.ticker.remove(tick)
   }, [])
+  const navRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    // The bar arrives with the title, not before: a lone link over a black screen reads as broken.
+    const tick = () => {
+      if (drive.lit && navRef.current && !navRef.current.classList.contains('is-lit')) navRef.current.classList.add('is-lit')
+    }
+    gsap.ticker.add(tick)
+    return () => gsap.ticker.remove(tick)
+  }, [])
   return (
-    <nav className="topbar" aria-label="Site">
+    <nav className="topbar" aria-label="Site" ref={navRef}>
       <a
         ref={nameRef}
         href="#top"

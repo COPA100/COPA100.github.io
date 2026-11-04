@@ -7,11 +7,11 @@ import { CLOUD_Y } from '../world/terrain'
 import { COMMON } from './glsl'
 
 // The overlook at the top: a guardrail along the drop that wraps across the end of the road, red
-// reflector panels where the tarmac stops, a dry-stone wall along the overlook, boulders on the
-// edge and a stand of pines on both slopes. At night the beams pick them out; at sunrise they
+// reflector panels where the tarmac stops, boulders on the edge and a stand of pines on both
+// slopes. At night the beams pick them out; at sunrise they
 // stand as silhouettes against the sky and the cloud sea.
 
-const KIND = { rail: 0, reflector: 1, tree: 2, rock: 3, iron: 4, stone: 5 } as const
+const KIND = { rail: 0, reflector: 1, tree: 2, rock: 3, iron: 4, wood: 5 } as const
 
 type Part = { g: THREE.BufferGeometry; k: number }
 
@@ -77,33 +77,15 @@ function build() {
     }
   }
 
-  // Guardrail along the drop on the approach, up to where the overlook opens.
-  const WALL_S = END_S - 116
+  // Along the drop: the outer edge of the lay-by, from where it opens to the end of the road.
   const edge: (readonly [number, number, number])[] = []
-  for (let s = END_S - 190; s <= WALL_S + 0.01; s += 2.5) edge.push(at(s, halfRight(s) - 0.35))
-  rail(edge)
+  for (let s = END_S - 190; s <= END_S + 0.01; s += 2.5) edge.push(at(s, halfRight(s) - 0.35))
   // Then square across the end of the road, so the tarmac stops at something.
   const across: (readonly [number, number, number])[] = []
   const wR = halfRight(END_S) - 0.35
   const wL = -(halfLeft(END_S) - 0.35)
   for (let t = 0; t <= 1.0001; t += 1 / 6) across.push(at(END_S + 1.2, wR + (wL - wR) * t))
-  rail(across)
-
-  // The overlook itself: a low dry-stone wall along the lip of the pad, block by block.
-  // Blocks overlap their neighbours, so the wall stays continuous round the curve.
-  for (let s = WALL_S; s <= END_S + 0.6; s += 1.0) {
-    sample(s, f)
-    const yaw = Math.atan2(-f.tz, f.tx)
-    const [x, y, z] = at(s, halfRight(s) + 0.25)
-    // Tilted to the grade between its ends, so the courses run smooth instead of stepping.
-    const [ax, ay, az] = at(s - 0.75, halfRight(s - 0.75) + 0.25)
-    const [bx, by, bz] = at(s + 0.75, halfRight(s + 0.75) + 0.25)
-    const pitch = Math.atan2(by - ay, Math.hypot(bx - ax, bz - az))
-    const h = 0.66 + rnd() * 0.04
-    box(1.5, h, 0.55, KIND.stone, x, y + h / 2 - 0.05, z, yaw, pitch)
-    // A coping course on top, slightly proud.
-    box(1.5, 0.1, 0.64, KIND.stone, x, y + 0.72, z, yaw, pitch)
-  }
+  rail([...edge, ...across])
 
   // Red reflector panels on the end barrier, facing back down the road.
   sample(END_S + 1.2, f)
@@ -112,6 +94,42 @@ function build() {
     const [x, y, z] = at(END_S + 1.0, wR + (wL - wR) * t)
     box(0.6, 0.9, 0.05, KIND.reflector, x, y + 1.45, z, back)
     box(0.1, 1.9, 0.1, KIND.rail, x, y + 0.95, z, back)
+  }
+
+  // Posts and a back for the overlook sign (its face is drawn separately, with its lettering).
+  {
+    const s = END_S - 128
+    sample(s, f)
+    const yaw = Math.atan2(-f.rz, f.rx) + 0.4
+    const [x, y, z] = at(s, halfRight(s) + 1.6)
+    box(3.46, 1.76, 0.06, KIND.iron, x - Math.sin(yaw) * 0.04, y + 2.5, z - Math.cos(yaw) * 0.04, yaw)
+    for (const t of [-1.1, 1.1]) box(0.1, 3.2, 0.1, KIND.iron, x + Math.cos(yaw) * t, y + 1.4, z - Math.sin(yaw) * t, yaw)
+  }
+
+  // A bench at the rail beside the parking spot, facing out over the drop.
+  {
+    const s = PARK_S + 8
+    sample(s, f)
+    // Local +x along the road, local +z out over the drop.
+    const yaw = Math.atan2(-f.tz, f.tx)
+    const lat = halfRight(s) - 1.5
+    const [x, y, z] = at(s, lat)
+    const put = (w: number, h: number, d: number, k: number, lx: number, ly: number, lz: number, tilt = 0) => {
+      const g = new THREE.BoxGeometry(w, h, d)
+      g.rotateX(tilt)
+      g.translate(lx, ly, lz)
+      g.rotateY(yaw)
+      g.translate(x, y, z)
+      parts.push({ g, k })
+    }
+    // Slatted seat and back, on two iron frames.
+    for (const dz of [-0.2, 0, 0.2]) put(1.9, 0.05, 0.16, KIND.wood, 0, 0.46, dz)
+    for (const dy of [0.66, 0.84]) put(1.9, 0.12, 0.04, KIND.wood, 0, dy, -0.33, -0.18)
+    for (const dx of [-0.8, 0.8]) {
+      put(0.06, 0.46, 0.06, KIND.iron, dx, 0.23, 0.22)
+      put(0.06, 0.92, 0.06, KIND.iron, dx, 0.46, -0.28, -0.12)
+      put(0.06, 0.05, 0.58, KIND.iron, dx, 0.43, -0.02)
+    }
   }
 
   // Boulders on the lip, outside the rail.
@@ -202,7 +220,7 @@ const frag = /* glsl */ `
       : vK < 2.5 ? vec3(0.035, 0.05, 0.04)
       : vK < 3.5 ? vec3(0.16, 0.15, 0.14)
       : vK < 4.5 ? vec3(0.05, 0.05, 0.05)
-      : vec3(0.24, 0.22, 0.2);
+      : vec3(0.2, 0.13, 0.08);
 
     // Night: only what the lamps reach, plus a breath of starlight so shapes don't vanish.
     vec3 col = albedo * (0.02 + hl * (0.35 + 0.65 * abs(dot(N, normalize(uCarF)))));
@@ -225,6 +243,76 @@ const frag = /* glsl */ `
   }
 `
 
+// The brown recreation sign at the mouth of the lay-by, drawn once onto a canvas.
+function signTexture() {
+  const c = document.createElement('canvas')
+  c.width = 1024
+  c.height = 512
+  const g = c.getContext('2d')!
+  g.fillStyle = '#4a2f1c'
+  g.fillRect(0, 0, 1024, 512)
+  g.strokeStyle = '#efe8da'
+  g.lineWidth = 14
+  g.beginPath()
+  g.roundRect(26, 26, 972, 460, 34)
+  g.stroke()
+  g.fillStyle = '#efe8da'
+  g.textAlign = 'center'
+  g.textBaseline = 'middle'
+  g.font = "800 116px 'Overpass Variable', 'Helvetica Neue', Arial, sans-serif"
+  g.fillText('SCENIC', 512, 160)
+  g.fillText('OVERLOOK', 512, 290)
+  g.font = "600 64px 'Overpass Variable', 'Helvetica Neue', Arial, sans-serif"
+  g.fillText('ELEV. 5,080 FT', 512, 412)
+  const t = new THREE.CanvasTexture(c)
+  t.anisotropy = 4
+  return t
+}
+
+const signFrag = /* glsl */ `
+  precision highp float;
+  ${COMMON}
+  uniform sampler2D tMap;
+  varying vec2 vUv; varying vec3 vP; varying vec3 vN;
+  void main() {
+    vec3 tex = texture2D(tMap, vUv).rgb;
+    vec3 N = normalize(vN);
+    vec3 V = normalize(cameraPosition - vP);
+    // Sign sheeting is retroreflective: the beams come straight back off it.
+    float hl = 1.0 - exp(-headlights(vP) * 0.8);
+    vec3 col = tex * (0.05 + hl * 2.2 * max(dot(N, V), 0.0));
+    float day = smoothstep(0.25, 0.85, uDawn);
+    vec3 lit = tex * (sunColor(uDawn) * max(dot(N, normalize(uSunDir)), 0.0) * 1.2 + dawnZenith(uDawn) * 1.5 + dawnHorizon(uDawn) * 0.1);
+    col = mix(col, lit, day);
+    float fog = fogAmount(length(vP - cameraPosition));
+    gl_FragColor = vec4(mix(col, hazeColor(-V), fog), 1.0);
+  }
+`
+
+function OverlookSign() {
+  const { mesh } = useMemo(() => {
+    const s = END_S - 128
+    const f = sample(s)
+    const lat = halfRight(s) + 1.6
+    const x = f.x + f.rx * lat
+    const z = f.z + f.rz * lat
+    const y = groundAt(x, z)
+    // Facing back down the road, at the car coming up, turned in a touch.
+    const yaw = Math.atan2(-f.rz, f.rx) + 0.4
+    // The plane faces +z, which this yaw turns to face back down the road.
+    const g = new THREE.PlaneGeometry(3.4, 1.7)
+    g.rotateY(yaw)
+    g.translate(x, y + 2.5, z)
+    const m = new THREE.ShaderMaterial({
+      vertexShader: `varying vec2 vUv; varying vec3 vP; varying vec3 vN; void main(){ vUv = uv; vN = normal; vec4 w = modelMatrix * vec4(position, 1.0); vP = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+      fragmentShader: signFrag,
+      uniforms: { ...U, tMap: { value: signTexture() } },
+    })
+    return { mesh: new THREE.Mesh(g, m) }
+  }, [])
+  return <primitive object={mesh} frustumCulled={false} />
+}
+
 export function Props() {
   const { geo, mat } = useMemo(
     () => ({
@@ -233,5 +321,10 @@ export function Props() {
     }),
     [],
   )
-  return <mesh geometry={geo} material={mat} frustumCulled={false} />
+  return (
+    <>
+      <mesh geometry={geo} material={mat} frustumCulled={false} />
+      <OverlookSign />
+    </>
+  )
 }

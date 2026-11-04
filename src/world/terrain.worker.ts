@@ -1,10 +1,9 @@
 import { buildCoarse, buildStrip } from './build.ts'
 
-self.onmessage = (e: MessageEvent<{ segments: number; step: number; cols: number }>) => {
+// One part of the mesh per worker, so the two halves build side by side.
+self.onmessage = (e: MessageEvent<{ part: 'coarse' | 'strip'; segments: number; step: number; cols: number }>) => {
   const t0 = performance.now()
-  const strip = buildStrip(e.data.step, e.data.cols)
-  const coarse = buildCoarse(e.data.segments)
+  const b = e.data.part === 'coarse' ? buildCoarse(e.data.segments) : buildStrip(e.data.step, e.data.cols)
   const ms = performance.now() - t0
-  const list = [coarse.position, coarse.normal, coarse.index, strip.position, strip.normal, strip.index].map((a) => a.buffer)
-  ;(self as unknown as Worker).postMessage({ coarse, strip, ms }, list)
+  ;(self as unknown as Worker).postMessage({ b, ms }, [b.position.buffer, b.normal.buffer, b.index.buffer])
 }

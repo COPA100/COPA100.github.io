@@ -187,19 +187,19 @@ export function Director() {
       U.uLights.value = drive.ready ? 1 : 0
       U.uTail.value = drive.ready ? 1 : 0
     } else {
-      U.uTail.value = Math.min(1, Math.max(0, (since - 0.5) / 0.3))
-      const a = since - 0.95
+      U.uTail.value = Math.min(1, Math.max(0, (since - 0.12) / 0.3))
+      const a = since - 0.5
       U.uLights.value = a < 0 ? 0 : a < 0.07 ? 0.7 : a < 0.16 ? 0.06 : Math.min(1, 0.55 + (a - 0.16) * 1.5)
     }
     drive.since = since
-    if (!drive.lit && (reducedMotion ? drive.ready : since > 1.15)) drive.lit = true
+    if (!drive.lit && (reducedMotion ? drive.ready : since > 0.7)) drive.lit = true
     // As the lamps catch, a survey pulse runs out from the car and maps the mountain behind it.
     if (reducedMotion) {
       U.uPulse.value = 1e5
       U.uPulseA.value = 0
     } else {
       // Slow off the car, accelerating out: the front lingers on the near slopes, where it's seen.
-      const p = Math.min(1, Math.max(0, (since - 1.12) / 3.0))
+      const p = Math.min(1, Math.max(0, (since - 0.67) / 3.0))
       U.uPulse.value = p <= 0 ? 0 : 6 + 2600 * Math.pow(p, 2.2)
       U.uPulseA.value = p <= 0 ? 0 : Math.min(1, p * 14) * (1 - sm(0.6, 1, p))
       if (p >= 1) U.uPulse.value = 1e5
@@ -253,7 +253,18 @@ export function Director() {
     st.R.set(Math.cos(heading), 0, Math.sin(heading))
     st.Up.crossVectors(st.R, st.F).normalize()
     st.car.set(f.x + f.rx * lat, f.y, f.z + f.rz * lat)
-    if (st.s > END_S - 130) st.car.y = Math.max(f.y, groundAt(st.car.x, st.car.z) + 0.14)
+    if (st.s > END_S - 130) {
+      st.car.y = Math.max(f.y, groundAt(st.car.x, st.car.z) + 0.14)
+      // In the lay-by the car sits on the ground it's parked on, cross-slope included, not level.
+      const e = 1.6
+      const hx = (groundAt(st.car.x + e, st.car.z) - groundAt(st.car.x - e, st.car.z)) / (2 * e)
+      const hz = (groundAt(st.car.x, st.car.z + e) - groundAt(st.car.x, st.car.z - e)) / (2 * e)
+      const k = sm(END_S - 130, END_S - 95, st.s)
+      st.tmp.set(-hx, 1, -hz).normalize()
+      st.Up.lerp(st.tmp, k).normalize()
+      st.F.addScaledVector(st.Up, -st.F.dot(st.Up)).normalize()
+      st.R.crossVectors(st.F, st.Up).normalize()
+    }
     U.uCar.value.copy(st.car)
     U.uCarF.value.copy(st.F)
     U.uCarR.value.copy(st.R)

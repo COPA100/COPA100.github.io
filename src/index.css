@@ -182,6 +182,13 @@ html.lenis body {
   padding: calc(var(--pad) - 4px) var(--pad);
   pointer-events: none;
 }
+.topbar {
+  opacity: 0;
+  transition: opacity 900ms 500ms var(--ease-out);
+}
+.topbar.is-lit {
+  opacity: 1;
+}
 .topbar a {
   pointer-events: auto;
 }

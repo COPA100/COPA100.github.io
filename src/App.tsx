@@ -5,7 +5,7 @@ import Lenis from 'lenis'
 import { low, reducedMotion } from './lib/tier'
 import { TRACK_VH } from './world/script'
 import { Signs } from './ui/Signs'
-import { Cluster, Contact, Hero, MapLabels, TopBar } from './ui/Hud'
+import { Cluster, Contact, Hero, TopBar } from './ui/Hud'
 
 const Scene = lazy(() => import('./scene/Scene'))
 
@@ -54,7 +54,6 @@ export default function App() {
         <Scene portrait={portrait} />
       </Suspense>
       <Signs portrait={portrait} />
-      <MapLabels />
       <Hero />
       <Cluster />
       <TopBar />

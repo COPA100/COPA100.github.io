@@ -4,16 +4,28 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { U, drive } from '../lib/state'
 import { forcedSpeed, low, reducedMotion } from '../lib/tier'
 import { END_S, PARK_S, START_S, carLateral, carYaw, frame, groundAt, sample, sm } from '../world/road'
-import { END_VH, MAP_VH, OVERLOOK_VH, calm, keys, roadAt, segmentAt, type Shot } from '../world/script'
+import { END_VH, OVERLOOK_VH, SUNRISE_VH, calm, dawnAt, keys, roadAt, segmentAt, type Shot } from '../world/script'
 import { holdS, signDefs } from '../world/signs'
 import { SUMMIT } from '../world/terrain'
 import { updateSigns } from '../ui/signSync'
 import { Car } from './Car'
 
+// The sun comes up ahead of the parked car and a little to its right, so the car stands
+// dark against the brightest part of the sky.
+const SUN_AZ = (() => {
+  const f = sample(PARK_S)
+  return f.heading + carYaw(PARK_S) + 0.2
+})()
+const setSun = (dawn: number) => {
+  const el = -0.07 + 0.13 * sm(0.3, 1, dawn)
+  const c = Math.cos(el)
+  U.uSunDir.value.set(Math.sin(SUN_AZ) * c, Math.sin(el), -Math.cos(SUN_AZ) * c)
+}
+
 const damp = (a: number, b: number, l: number, dt: number) => a + (b - a) * (1 - Math.exp(-l * dt))
 
-type Pose = { pos: THREE.Vector3; tgt: THREE.Vector3; up: THREE.Vector3; fov: number; shift: number; amb: number; ember: number; fogN: number; fogF: number; map: number }
-const pose = (): Pose => ({ pos: new THREE.Vector3(), tgt: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), fov: 40, shift: 0, amb: 0, ember: 0, fogN: 0, fogF: 0, map: 0 })
+type Pose = { pos: THREE.Vector3; tgt: THREE.Vector3; up: THREE.Vector3; fov: number; shift: number; amb: number; ember: number; fogN: number; fogF: number }
+const pose = (): Pose => ({ pos: new THREE.Vector3(), tgt: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), fov: 40, shift: 0, amb: 0, ember: 0, fogN: 0, fogF: 0 })
 
 export const scrollVh = () => {
   const max = Math.max(1, document.documentElement.scrollHeight - innerHeight)
@@ -155,15 +167,6 @@ export function Director() {
         out.shift = 0
         break
       }
-      case 'top': {
-        // Straight down over the massif, north up, with the route clear of the contact block.
-        const cx = SUMMIT.x + (portrait ? -60 : -260)
-        const cz = SUMMIT.z + (portrait ? 230 : 40)
-        out.pos.set(cx, SUMMIT.h + shot.h, cz)
-        out.tgt.set(cx, 0, cz - 0.001)
-        out.up.set(0, 0, -1)
-        break
-      }
     }
   }
 
@@ -210,7 +213,13 @@ export function Director() {
     const braking = Math.max(1 - absV / 3, Math.min(1, (-st.accel * Math.sign(st.v || 1)) / 80))
     U.uBrake.value = damp(U.uBrake.value, Math.max(0, braking), 10, dt)
     // Parked at the overlook, the driver flicks the high beams on and lights the drop.
-    const brights = sm(OVERLOOK_VH[0] - 26, OVERLOOK_VH[0] + 4, vh) * (1 - sm(MAP_VH[0] - 20, MAP_VH[0] + 10, vh))
+    const dawn = dawnAt(vh)
+    drive.dawn = dawn
+    U.uDawn.value = dawn
+    setSun(dawn)
+    // As daylight takes over, the lamps stop mattering: the beams fade, the taillights stay.
+    U.uLights.value *= 1 - 0.85 * sm(0.45, 0.95, dawn)
+    const brights = sm(OVERLOOK_VH[0] - 26, OVERLOOK_VH[0] + 4, vh) * (1 - sm(SUNRISE_VH[0] + 10, SUNRISE_VH[0] + 50, vh))
     drive.high = damp(drive.high, Math.max(drive.highTarget, brights), brights > drive.high ? 5 : 12, dt)
     U.uHigh.value = drive.high
 
@@ -261,22 +270,19 @@ export function Director() {
     U.uEmberA.value = pa.ember + (pb.ember - pa.ember) * t
     U.uFogN.value = pa.fogN + (pb.fogN - pa.fogN) * t
     U.uFogF.value = pa.fogF + (pb.fogF - pa.fogF) * t
-    drive.map = pa.map + (pb.map - pa.map) * t
-    U.uMap.value = drive.map
     U.uEmberY.value = st.car.y
 
     // Pointer parallax on desktop, sprung so it never feels attached to the mouse.
-    const live = 1 - drive.map
     if (!low && !reducedMotion) {
       st.px = damp(st.px, pointer.x, 2.2, dt)
       st.py = damp(st.py, pointer.y, 2.2, dt)
-      pos.x += st.R.x * st.px * 0.6 * live
-      pos.z += st.R.z * st.px * 0.6 * live
-      pos.y += st.py * 0.3 * live
+      pos.x += st.R.x * st.px * 0.6
+      pos.z += st.R.z * st.px * 0.6
+      pos.y += st.py * 0.3
     }
     if (!reducedMotion) {
       // Road vibration climbs with speed; barely a tremor when idling.
-      const k = (speed * speed * 0.045 + 0.001) * live * Math.max(0, 1 - pos.distanceTo(st.car) / 60)
+      const k = (speed * speed * 0.045 + 0.001) * Math.max(0, 1 - pos.distanceTo(st.car) / 60)
       pos.x += Math.sin(time * 41.3) * k * 0.6
       pos.y += Math.sin(time * 47.9 + 1.3) * k
     }
@@ -300,7 +306,7 @@ export function Director() {
     camera.up.copy(up)
     camera.lookAt(tgt)
     const aspect = size.width / size.height
-    const kick = reducedMotion ? 0 : speed * 9 * live
+    const kick = reducedMotion ? 0 : speed * 9
     cam.fov = (dbg?.fov ?? fov) + kick
     cam.aspect = aspect
     // Keep near/far sane from a few metres to the survey altitude.
@@ -328,12 +334,11 @@ export function Director() {
       perf.last = time
     }
     U.uDpr.value = state.gl.getPixelRatio()
-    U.uPx.value = (Math.tan((cam.fov * Math.PI) / 360) * 2 * (0.8 + drive.map * 0.6)) / size.height
+    U.uPx.value = (Math.tan((cam.fov * Math.PI) / 360) * 2 * 0.8) / size.height
     drive.vis = vis
     if (import.meta.env.DEV) (window as unknown as { __dbg: unknown }).__dbg = { cam: pos.toArray().map(Math.round), tgt: tgt.toArray().map(Math.round), car: st.car.toArray().map(Math.round), s: Math.round(st.s), vh: Math.round(vh) }
     updateSigns(cam, size.width, size.height)
   }, 0)
 
-  void MAP_VH
   return <Car ref={carRef} />
 }

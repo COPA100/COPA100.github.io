@@ -93,14 +93,15 @@ html.lenis body {
   color: var(--bone);
   animation: fade 900ms 260ms var(--ease-out) both;
 }
-.hero-line-copy {
-  margin-top: 8px;
-  max-width: 25em;
-  font-size: clamp(15px, 1.1vw, 17px);
-  line-height: 1.5;
-  color: var(--bone-2);
-  text-wrap: pretty;
-  animation: fade 900ms 420ms var(--ease-out) both;
+.hero-sep {
+  display: inline-block;
+  width: 0.2em;
+  height: 0.2em;
+  margin: 0 0.5em;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: 0.24em;
+  opacity: 0.7;
 }
 .hero-cue {
   margin-top: 26px;
@@ -174,8 +175,7 @@ html.lenis body {
   letter-spacing: 0.01em;
   opacity: 0;
 }
-.topbar-link,
-.contact-link {
+.topbar-link {
   position: relative;
   font-size: 15px;
   font-weight: 500;
@@ -186,8 +186,7 @@ html.lenis body {
   cursor: pointer;
   transition: color 180ms ease;
 }
-.topbar-link span,
-.contact-link span {
+.topbar-link span {
   background: linear-gradient(currentColor, currentColor) 0 100% / 0% 1px no-repeat;
   padding-bottom: 3px;
   transition: background-size 320ms var(--ease-out);
@@ -200,12 +199,8 @@ html.lenis body {
   .topbar-link:hover span {
     background-image: linear-gradient(var(--accent), var(--accent));
   }
-  .contact-link:hover span {
-    background-size: 100% 1px;
-  }
 }
-.topbar-link:active,
-.contact-link:active {
+.topbar-link:active {
   transform: scale(0.97);
 }
 
@@ -592,58 +587,12 @@ html.lenis body {
   font-size: 42px;
 }
 
-/* ---------- Survey map ---------- */
-
-.map-labels {
-  position: fixed;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-}
-.map-label {
-  position: absolute;
-  left: 0;
-  top: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  opacity: 0;
-  background: none;
-  border: 0;
-  padding: 0;
-  color: var(--bone);
-  cursor: pointer;
-  font-family: var(--sign);
-}
-.map-label i {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #000;
-  box-shadow: inset 0 0 0 2px var(--accent);
-  margin-left: -4.5px;
-  transition: background-color 180ms ease;
-}
-.map-label span {
-  font-size: 13px;
-  font-weight: 600;
-  background: #000;
-  padding: 4px 7px 2px;
-  border-radius: 3px;
-  transition: color 180ms ease;
-}
-@media (hover: hover) and (pointer: fine) {
-  .map-label:hover i {
-    background: var(--accent);
-  }
-}
-
 .contact {
   position: fixed;
   left: var(--pad);
-  bottom: var(--pad);
+  top: calc(var(--pad) + 8px);
   z-index: 7;
-  width: min(660px, calc(100% - 2 * var(--pad)));
+  width: min(640px, calc(100% - 2 * var(--pad)));
   pointer-events: none;
   visibility: hidden;
   transition: visibility 0s 500ms;
@@ -654,10 +603,8 @@ html.lenis body {
   transition: visibility 0s;
 }
 .contact-block {
-  background: #000;
-  border: 1px solid rgb(233 228 216 / 0.2);
-  border-radius: 4px;
-  padding: clamp(24px, 3vw, 40px);
+  /* No panel: the text sits in the sky, held off it by a soft shadow. */
+  text-shadow: 0 1px 24px rgb(10 8 20 / 0.35);
 }
 .contact [data-rise] {
   opacity: 0;
@@ -683,83 +630,70 @@ html.lenis body {
   transition-delay: 210ms;
 }
 .contact-kicker {
-  font-size: 15px;
-  color: var(--ash);
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgb(233 228 216 / 0.7);
 }
-.contact-mail {
-  display: inline-block;
+.contact-title {
   margin-top: 10px;
   font-family: var(--display);
-  font-weight: 700;
-  font-size: clamp(40px, 4.6vw, 72px);
-  line-height: 0.95;
-  letter-spacing: -0.01em;
-  background: linear-gradient(var(--accent), var(--accent)) 0 100% / 0% 3px no-repeat;
-  padding-bottom: 6px;
-  transition: background-size 420ms var(--ease-out);
-}
-@media (hover: hover) and (pointer: fine) {
-  .contact-mail:hover {
-    background-size: 100% 3px;
-  }
+  font-weight: 750;
+  text-transform: uppercase;
+  font-size: clamp(48px, 6.4vw, 104px);
+  line-height: 0.9;
+  letter-spacing: -0.005em;
+  color: var(--bone);
 }
 .contact-links {
-  margin-top: 22px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 28px;
+  margin-top: 26px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 560px;
 }
-.contact-resume {
-  margin-left: auto;
+.contact-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 46px;
   font-family: var(--display);
   font-weight: 700;
-  font-size: 20px;
+  font-size: 19px;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  padding: 11px 20px 9px;
-  border: 1px solid var(--bone);
+  letter-spacing: 0.03em;
+  color: var(--bone);
+  text-shadow: none;
+  border: 1px solid rgb(233 228 216 / 0.55);
   border-radius: 3px;
+  background: rgb(12 10 22 / 0.18);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   transition:
-    background-color 200ms ease,
-    color 200ms ease,
-    border-color 200ms ease,
+    background-color 220ms ease,
+    color 220ms ease,
+    border-color 220ms ease,
     transform 160ms var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  .contact-resume:hover {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #000;
+  .contact-btn:hover {
+    background: var(--bone);
+    border-color: var(--bone);
+    color: #121018;
   }
 }
-.contact-resume:active {
+.contact-btn:focus-visible {
+  outline: 2px solid var(--bone);
+  outline-offset: 3px;
+}
+.contact-btn:active {
   transform: scale(0.97);
 }
 .contact-foot {
-  margin-top: 26px;
-  padding-top: 18px;
-  border-top: 1px solid rgb(233 228 216 / 0.14);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 18px;
+  margin-top: 18px;
   font-size: 13px;
-  color: var(--ash);
-}
-.contact-scale {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  white-space: nowrap;
-}
-.contact-scale-bar {
-  display: block;
-  height: 5px;
-  border: 1px solid var(--ash);
-  border-top: 0;
-  width: 80px;
+  color: rgb(233 228 216 / 0.72);
 }
 
 @media (orientation: portrait) and (min-width: 700px) {
@@ -790,22 +724,19 @@ html.lenis body {
   .gauge-value {
     font-size: 34px;
   }
+  .contact {
+    top: calc(var(--pad) + 4px);
+  }
+  .contact-title {
+    font-size: clamp(42px, 13vw, 60px);
+  }
   .contact-links {
-    gap: 4px 22px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
-  .contact-mail {
-    font-size: clamp(28px, 7.7vw, 40px);
-  }
-  .contact-resume {
-    margin-left: 0;
-  }
-  .contact-foot {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  .map-label span {
-    font-size: 12px;
+  .contact-btn {
+    height: 44px;
+    font-size: 17px;
   }
 }
 
@@ -813,7 +744,6 @@ html.lenis body {
 
 .reduced .hero-line,
 .reduced .hero-role,
-.reduced .hero-line-copy,
 .reduced .hero-cue {
   animation-name: fade-only;
 }

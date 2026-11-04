@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { quality } from '../lib/tier'
 import { U, drive } from '../lib/state'
-import { END_S, HALF, START_S, carLateral, frame, halfLeft, halfRight, sample, sm } from '../world/road'
+import { END_S, HALF, START_S, carLateral, frame, halfLeft, halfRight, sample } from '../world/road'
 import { COMMON } from './glsl'
 
 // ---- Asphalt and paint ----
@@ -63,8 +63,11 @@ const roadFrag = /* glsl */ `
     // road reads the whole way up, not only inside the beam.
     col += BONE * paint * (0.075 + 0.11 * uAmb + min(hl, 4.0) * 0.75);
     col += ACCENT * tailglow(vP) * (0.9 + paint);
+    // Morning: grey asphalt under the sky, paint just paint.
+    float day = smoothstep(0.3, 0.9, uDawn);
+    col += (vec3(0.05, 0.045, 0.045) + BONE * paint * 0.12) * (dawnZenith(uDawn) * 3.0 + sunColor(uDawn) * 0.25) * day * 2.0;
     float fog = fogAmount(vDist);
-    col = mix(col, vec3(0.0), fog);
+    col = mix(col, hazeColor(normalize(vP - cameraPosition)), fog);
     gl_FragColor = vec4(col * uAppear, 1.0);
   }
 `
@@ -138,12 +141,12 @@ const trailFrag = /* glsl */ `
     // Hot just behind the car, settling to a thin steady line further back.
     float hot = exp(-max(behind, 0.0) / 70.0) * (0.25 + uSpeed * 1.4);
     float a = done * (uBase + hot);
-    // Ahead of the car, in the survey map: a faint dashed line still to drive.
+    // Ahead of the car, in the wide shots: a faint dashed line still to drive.
     float dash = step(0.5, fract(vS / 22.0));
     float ahead = (1.0 - step(0.0, behind)) * step(uStart, vS);
     a += ahead * uAhead * dash * 0.45;
     vec3 c = mix(BONE * 0.8, ACCENT, done);
-    float fog = fogAmount(vDist) * (1.0 - uMap);
+    float fog = fogAmount(vDist);
     gl_FragColor = vec4(c * a * (1.0 - fog), 1.0);
   }
 `
@@ -257,9 +260,8 @@ export function Road() {
 
   useFrame(() => {
     roadAppear.value = drive.ready ? Math.min(1, roadAppear.value + 0.03) : 0
-    // In the survey map the trail must read at any scale.
-    // Wide shots and the map show the whole route: driven in the accent, still to come dashed.
-    const wide = Math.max(U.uEmberA.value, sm(0.2, 0.9, drive.map))
+    // Wide shots show the whole route: driven in the accent, still to come dashed.
+    const wide = U.uEmberA.value
     trailUniforms.uLift.value = 0.55 + wide * 3
     trailUniforms.uBase.value = 0.16 + 0.84 * wide
     trailUniforms.uAhead.value = wide

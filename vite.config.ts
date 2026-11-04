@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  base: '/portfolio-website-v4/',
+  base: '/',
   plugins: [react(), tailwindcss()],
   server: { port: 5210, strictPort: true },
   preview: { port: 5210, strictPort: true },

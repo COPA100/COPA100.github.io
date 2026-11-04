@@ -41,7 +41,7 @@ export function Mounts({ portrait }: { portrait: boolean }) {
           float hl = headlights(vP);
           vec3 col = vec3(0.012) + vec3(0.16) * min(hl, 2.0) * (0.4 + 0.6 * abs(vN.x + vN.z));
           float fog = fogAmount(length(vP - cameraPosition));
-          gl_FragColor = vec4(mix(col, vec3(0.0), fog), 1.0);
+          gl_FragColor = vec4(mix(col, hazeColor(normalize(vP - cameraPosition)), fog), 1.0);
         }`,
     })
     return { geo: merged, mat }

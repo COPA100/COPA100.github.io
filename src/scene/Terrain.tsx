@@ -6,7 +6,7 @@ import { U, drive } from '../lib/state'
 import { buildCoarse, buildStrip, type Buffers } from '../world/build'
 import TerrainWorker from '../world/terrain.worker.ts?worker'
 import { COMMON } from './glsl'
-import { SUMMIT } from '../world/terrain'
+import { CLOUD_Y } from '../world/terrain'
 
 const vert = /* glsl */ `
   varying vec3 vP;
@@ -54,14 +54,13 @@ const frag = /* glsl */ `
     float microAmb = micro * steep * (1.0 - smoothstep(120.0, 320.0, vDist));
 
     // Night, but legible: the survey lines hold faintly everywhere; the beams make them bright.
-    // On the survey map, the minor lines step back and the sheet fades out past the massif.
-    float amb = max(max(minor * 0.42 * (1.0 - uMap * 0.65), mid * 0.7), max(index * 0.95, microAmb * 0.55 * (1.0 - uMap)));
-    float far = length(vP.xz - vec2(${SUMMIT.x.toFixed(1)}, ${SUMMIT.z.toFixed(1)}));
-    amb *= 1.0 - uMap * 0.86 * smoothstep(420.0, 1250.0, far);
+    // As the sun comes up the survey fades out and the real ground shows through.
+    float survey = 1.0 - smoothstep(0.25, 0.75, uDawn);
+    float amb = max(max(minor * 0.42, mid * 0.7), max(index * 0.95, microAmb * 0.55));
     float hl = headlights(vP);
     float lit = min(hl * 5.0, 2.4);
     float beamLines = max(max(minor, mid), max(index, micro * 0.55));
-    float line = amb * uAmb + beamLines * lit;
+    float line = (amb * uAmb + beamLines * lit) * survey;
 
     // A faint raking fill, so the ground has form where the lines are sparse.
     float key = max(dot(N, normalize(vec3(-0.5, 0.55, -0.62))), 0.0);
@@ -71,6 +70,14 @@ const frag = /* glsl */ `
     vec3 col = fill + BONE * line;
     col += ACCENT * tailglow(vP) * 0.5;
 
+    // Daylight: low sun on dark rock and scrub, the sky filling the shadows.
+    float day = smoothstep(0.2, 0.85, uDawn);
+    vec3 S = normalize(uSunDir);
+    float ndl = max(dot(N, S), 0.0);
+    vec3 albedo = mix(vec3(0.10, 0.085, 0.075), vec3(0.13, 0.12, 0.10), steep);
+    vec3 skyFill = (dawnZenith(uDawn) * 1.4 + dawnHorizon(uDawn) * 0.12) * (0.55 + 0.45 * N.y);
+    col += albedo * (sunColor(uDawn) * ndl * 2.4 + skyFill) * day;
+
     // The car's altitude, one warm contour around the whole mountain, for the wide shots.
     float dA = abs(h - uEmberY) / max(w, 1e-4);
     float core = 1.0 - smoothstep(0.8 * px, 1.8 * px, dA);
@@ -78,8 +85,14 @@ const frag = /* glsl */ `
     float under = exp(-max(uEmberY - h, 0.0) / 30.0) * step(h, uEmberY) * 0.08;
     col += ACCENT * (core + halo + under) * uEmberA * (1.0 - smoothstep(0.4, 1.4, w));
 
+    vec3 view = normalize(vP - cameraPosition);
+    vec3 haze = hazeColor(view);
+    // Where the slopes meet the cloud deck they go soft, as if the cloud wells up against them.
+    float mist = smoothstep(${CLOUD_Y + 70}.0, ${CLOUD_Y - 5}.0, h) * smoothstep(0.05, 0.6, uDawn);
+    col = mix(col, haze * 0.9, mist * 0.85);
+
     float fog = fogAmount(vDist);
-    col = mix(col, vec3(0.0), fog);
+    col = mix(col, haze, fog);
     gl_FragColor = vec4(col * uAppear, 1.0);
   }
 `

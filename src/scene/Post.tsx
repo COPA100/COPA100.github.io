@@ -164,7 +164,7 @@ export function Post() {
     for (let i = chain.length - 1; i > 0; i--) blit(chain[i], chain[i - 1], up, false)
 
     const u = composite.uniforms
-    u.uSpeedFx.value = reducedMotion ? 0 : U.uSpeed.value * (1 - drive.map)
+    u.uSpeedFx.value = reducedMotion ? 0 : U.uSpeed.value
     u.uVis.value = drive.vis
     camera.getWorldDirection(tmpDir)
     tmpP.copy(camera.position).addScaledVector(tmpDir, 100).project(camera)

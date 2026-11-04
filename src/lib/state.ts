@@ -9,7 +9,7 @@ export const drive = {
   mph: 0,
   feet: 0,
   climb: 0, // 0..1 from trailhead to overlook
-  map: 0, // 0..1 how far into the survey map we are
+  dawn: 0, // 0..1 night to sunrise, at the summit
   ready: false,
   vis: 1,
   high: 0,
@@ -30,7 +30,8 @@ export const U = {
   uTail: { value: 0 },
   uHigh: { value: 0 },
   uAmb: { value: 0 },
-  uMap: { value: 0 },
+  uDawn: { value: 0 },
+  uSunDir: { value: new THREE.Vector3(0, 0, 1) },
   uEmberY: { value: 0 },
   uEmberA: { value: 0 },
   uFogN: { value: 600 },

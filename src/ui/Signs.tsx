@@ -73,19 +73,21 @@ function ProjectSign({ d }: { d: SignDef }) {
             <li key={s}>{s}</li>
           ))}
         </ul>
-        <a
-          className="sign-link"
-          href={p.link.href}
-          target="_blank"
-          rel="noreferrer"
-          onPointerEnter={beamOn}
-          onPointerLeave={beamOff}
-          onFocus={beamOn}
-          onBlur={beamOff}
-        >
-          <span>{p.link.label}</span>
-          <span className="sr-only"> (opens in a new tab)</span>
-        </a>
+        {p.link && (
+          <a
+            className="sign-link"
+            href={p.link.href}
+            target="_blank"
+            rel="noreferrer"
+            onPointerEnter={beamOn}
+            onPointerLeave={beamOff}
+            onFocus={beamOn}
+            onBlur={beamOff}
+          >
+            <span>{p.link.label}</span>
+            <span className="sr-only"> (opens in a new tab)</span>
+          </a>
+        )}
       </footer>
       {/* The note is drawn beside the sign once the car stops; screen readers get it here. */}
       <p className="sr-only">

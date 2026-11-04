@@ -19,7 +19,14 @@ export const HOLDS: [number, number][] = [
 export const MARKER_VH = [790, 880]
 export const OPEN_VH = 10
 export const OVERLOOK_VH = [985, 1015] as const
-export const MAP_VH = [1050, END_VH] as const
+// The sunrise: from parked under the stars to full gold, then a short rest on the final frame.
+export const SUNRISE_VH = [OVERLOOK_VH[1], END_VH - 14] as const
+
+/** Night to sunrise, from scroll. A faint red line shows on the horizon past the markers. */
+export function dawnAt(vh: number) {
+  const hint = 0.12 * sm(MARKER_VH[0] - 40, MARKER_VH[1] + 40, vh)
+  return Math.max(hint, sm(SUNRISE_VH[0], SUNRISE_VH[1], vh))
+}
 
 // [scroll vh, car position on the road in metres]
 const holdA = (i: number) => holdS(i)[0]
@@ -74,7 +81,7 @@ void END_S
 
 // ---- Camera ----
 
-export type Env = { amb: number; ember: number; fogN: number; fogF: number; map: number }
+export type Env = { amb: number; ember: number; fogN: number; fogF: number }
 export type Shot =
   | { k: 'chase'; az: number; r: number; h: number; look: number; lookH: number; fov: number; lat?: number; env: Env }
   | { k: 'hold'; sign: number; back: number; up: number; lat: number; fov: number; aim: number; env: Env }
@@ -82,14 +89,14 @@ export type Shot =
   | { k: 'fixed'; pos: [number, number, number]; tgt: [number, number, number]; fov: number; env: Env }
   | { k: 'side'; dist: number; h: number; lead: number; aimH: number; fov: number; env: Env }
   | { k: 'overlook'; back: number; h: number; side: number; ahead: number; aimH: number; fov: number; env: Env }
-  | { k: 'top'; h: number; fov: number; env: Env }
   | { k: 'opening'; fov: number; env: Env }
 
-const DRIVE_ENV: Env = { amb: 0.52, ember: 0, fogN: 500, fogF: 2400, map: 0 }
-const HOLD_ENV: Env = { amb: 0.5, ember: 0, fogN: 500, fogF: 2600, map: 0 }
-const WIDE_ENV: Env = { amb: 0.46, ember: 1, fogN: 2400, fogF: 6400, map: 0 }
-const OVER_ENV: Env = { amb: 0.56, ember: 0, fogN: 1800, fogF: 7000, map: 0 }
-const MAP_ENV: Env = { amb: 0.72, ember: 0, fogN: 9000, fogF: 12000, map: 1 }
+const DRIVE_ENV: Env = { amb: 0.52, ember: 0, fogN: 500, fogF: 2400 }
+const HOLD_ENV: Env = { amb: 0.5, ember: 0, fogN: 500, fogF: 2600 }
+const WIDE_ENV: Env = { amb: 0.46, ember: 1, fogN: 2400, fogF: 6400 }
+const OVER_ENV: Env = { amb: 0.56, ember: 0, fogN: 1800, fogF: 7000 }
+// Daylight haze runs much further than the night's darkness.
+const DAWN_ENV: Env = { amb: 0.56, ember: 0, fogN: 2500, fogF: 9000 }
 
 const chase = (fov: number, o: Partial<Extract<Shot, { k: 'chase' }>> = {}): Shot => ({
   k: 'chase', az: 8, r: 11, h: 3.2, look: 30, lookH: -2, fov, env: DRIVE_ENV, ...o,
@@ -104,8 +111,8 @@ export function keys(portrait: boolean): Key[] {
   const cf = P ? 58 : 40 // chase fov
   const hf = P ? 24 : 17 // hold fov, telephoto
   return [
-    [0, { k: 'opening', fov: P ? 50 : 40, env: { amb: 0.34, ember: 0, fogN: 700, fogF: 3200, map: 0 } }],
-    [OPEN_VH, { k: 'opening', fov: P ? 50 : 40, env: { amb: 0.34, ember: 0, fogN: 700, fogF: 3200, map: 0 } }],
+    [0, { k: 'opening', fov: P ? 50 : 40, env: { amb: 0.34, ember: 0, fogN: 700, fogF: 3200 } }],
+    [OPEN_VH, { k: 'opening', fov: P ? 50 : 40, env: { amb: 0.34, ember: 0, fogN: 700, fogF: 3200 } }],
     [46, chase(cf, { az: 22, r: 12, h: 4.2 })],
     [80, chase(cf)],
     [HOLDS[0][0] - 8, hold(0, P ? 20 : 30, hf)],
@@ -133,10 +140,10 @@ export function keys(portrait: boolean): Key[] {
     // The camera stands off to the left, so the two beams cross the frame out into the dark.
     [OVERLOOK_VH[0], { k: 'overlook', back: P ? 13 : 10, h: P ? 2.6 : 2.3, side: P ? 2.2 : 6.5, ahead: P ? 8 : 17, aimH: P ? -7 : -3, fov: P ? 64 : 46, env: OVER_ENV }],
     [OVERLOOK_VH[1] + 12, { k: 'overlook', back: P ? 13.6 : 10.8, h: P ? 2.8 : 2.5, side: P ? 2.4 : 7, ahead: P ? 8 : 17, aimH: P ? -7 : -3, fov: P ? 64 : 46, env: OVER_ENV }],
-    // Then the crane lifts straight up off the car before the map takes over.
-    [MAP_VH[0] - 6, { k: 'overlook', back: P ? 20 : 16, h: P ? 95 : 80, side: 6, ahead: 10, aimH: 0, fov: P ? 56 : 40, env: { amb: 0.6, ember: 0, fogN: 1600, fogF: 6400, map: 0 } }],
-    [MAP_VH[0] + 40, { k: 'top', h: P ? 3800 : 2300, fov: 40, env: MAP_ENV }],
-    [END_VH, { k: 'top', h: P ? 3600 : 2150, fov: 40, env: MAP_ENV }],
+    // Then, as the sky lightens, the camera eases back and down, so the car becomes a silhouette
+    // on the edge with the sea of clouds and the sun beyond it.
+    [SUNRISE_VH[0] + 40, { k: 'overlook', back: P ? 15 : 12.5, h: P ? 2.2 : 2.0, side: P ? 1.6 : 4.5, ahead: P ? 60 : 80, aimH: P ? 6 : 3, fov: P ? 62 : 44, env: DAWN_ENV }],
+    [END_VH, { k: 'overlook', back: P ? 17 : 14, h: P ? 1.9 : 1.7, side: P ? 1.2 : 3.2, ahead: P ? 120 : 160, aimH: P ? 22 : 16, fov: P ? 62 : 44, env: DAWN_ENV }],
   ]
 }
 
@@ -161,7 +168,7 @@ export const CALM: [number, number][] = [
   [HOLDS[3][0], HOLDS[3][1]],
   [MARKER_VH[0] - 30, MARKER_VH[0] + 30],
   [MARKER_VH[1] - 30, MARKER_VH[1] + 30],
-  [MAP_VH[0] + 40, END_VH + 50],
+  [SUNRISE_VH[1], END_VH + 50],
 ]
 
 /** Reduced motion: where the film actually is (snapped into the nearest hold) and how visible. */

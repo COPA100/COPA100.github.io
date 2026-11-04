@@ -12,7 +12,7 @@ import { Car } from './Car'
 
 // The sun comes up ahead of the parked car and a little to its right, so the car stands
 // dark against the brightest part of the sky.
-const SUN_AZ = (() => {
+export const SUN_AZ = (() => {
   const f = sample(PARK_S)
   return f.heading + carYaw(PARK_S) + 0.2
 })()

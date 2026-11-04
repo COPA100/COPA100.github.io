@@ -3,6 +3,8 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { quality, reducedMotion } from '../lib/tier'
 import { sm } from '../world/road'
+import { SUNRISE_VH } from '../world/script'
+import { SUN_AZ } from './Director'
 import { U, drive } from '../lib/state'
 import { COMMON } from './glsl'
 
@@ -13,6 +15,16 @@ const meteor = {
   uMT: { value: 0 },
   uMI: { value: 0 },
 }
+// The sunrise contrail: a jet crossing high on the right, its trail catching the light first.
+// Bearings are relative to the sun, which sits just right of where the final shot looks.
+const dirAt = (az: number, el: number) => new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el))
+const contrail = {
+  uCA: { value: dirAt(SUN_AZ + 0.62, 0.17) },
+  uCB: { value: dirAt(SUN_AZ - 0.12, 0.33) },
+  uCP: { value: 0 },
+  uCI: { value: 0 },
+}
+let contrailTall = false
 const M_START = 1.9
 const M_LEN = 0.85
 const fwd = new THREE.Vector3()
@@ -29,13 +41,13 @@ export function Sky() {
         side: THREE.BackSide,
         depthWrite: false,
         depthTest: false,
-        uniforms: { ...U, ...meteor },
+        uniforms: { ...U, ...meteor, ...contrail },
         vertexShader: `varying vec3 vD; void main(){ vD = normalize(position); vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }`,
         fragmentShader: /* glsl */ `precision highp float;
           ${COMMON}
           varying vec3 vD;
-          uniform vec3 uMA, uMB;
-          uniform float uMT, uMI;
+          uniform vec3 uMA, uMB, uCA, uCB;
+          uniform float uMT, uMI, uCP, uCI;
 
           float h1(float n) { return fract(sin(n) * 43758.5453); }
           float n1(float x) { float i = floor(x); float f = fract(x); f = f * f * (3.0 - 2.0 * f); return mix(h1(i), h1(i + 1.0), f); }
@@ -84,6 +96,30 @@ export function Sky() {
               float tip = exp(-length(d - head) / 0.003);
               // A cool trail behind a white-hot head.
               col += (vec3(0.75, 0.82, 1.0) * (core * 2.4 + glow) + vec3(1.0, 0.95, 0.88) * tip * 2.4) * uMI;
+            }
+
+            // The contrail: fresh and thin at the plane, spreading and thinning behind it, lit pink then gold.
+            if (uCI > 0.0 && uCP > 0.0) {
+              // Measured against the great circle, not the chord: over a long arc the chord sags
+              // well inside the sphere, and the trail would vanish between its ends.
+              vec3 a = normalize(uCA);
+              vec3 head = normalize(mix(uCA, uCB, uCP));
+              vec3 n = normalize(cross(a, head));
+              float off = dot(d, n);
+              vec3 dp = normalize(d - n * off);
+              float span = acos(clamp(dot(a, head), -1.0, 1.0));
+              float along = atan(dot(cross(a, dp), n), dot(a, dp));
+              float t = clamp(along / max(span, 1e-5), 0.0, 1.0);
+              float dist = abs(off) + max(0.0, max(-along, along - span));
+              // Age along the trail: 0 at the plane, 1 at the far end.
+              float age = 1.0 - t;
+              float w = mix(0.0008, 0.007, pow(age, 0.8));
+              // A short clear gap behind the plane, then the trail condenses, then it spreads and fades.
+              float form = smoothstep(0.0, 0.015, age);
+              float body = exp(-pow(dist / w, 2.0)) * mix(0.55, 0.06, pow(age, 0.7)) * form;
+              vec3 tint = mix(vec3(1.0, 0.55, 0.62), vec3(1.0, 0.82, 0.55), smoothstep(0.5, 0.95, uDawn));
+              float glint = exp(-length(d - head) / 0.0012) * 1.2;
+              col += tint * (body * 0.75 + glint) * uCI;
             }
 
             // Far ranges standing out of the cloud sea, layered with distance, hazier the further.
@@ -142,7 +178,7 @@ export function Sky() {
     return { dome, stars }
   }, [])
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera, size }) => {
     // Once, on arrival, a meteor crosses from high on the right to low on the left, behind the ridges.
     const t = (drive.since - M_START) / M_LEN
     if (reducedMotion || t < 0 || t > 1 || drive.vh > 30) meteor.uMI.value = 0
@@ -157,6 +193,15 @@ export function Sky() {
       meteor.uMT.value = 1 - Math.pow(1 - t, 1.6)
       meteor.uMI.value = Math.max(0.001, Math.sin(Math.PI * Math.min(1, t * 1.25)) * (1 - t * 0.4))
     }
+    // Upright screens stack the text higher into the sky, so the jet flies lower there.
+    const tall = size.height > size.width
+    if (tall !== contrailTall) {
+      contrailTall = tall
+      contrail.uCA.value.copy(tall ? dirAt(SUN_AZ + 0.5, 0.1) : dirAt(SUN_AZ + 0.62, 0.17))
+      contrail.uCB.value.copy(tall ? dirAt(SUN_AZ - 0.2, 0.15) : dirAt(SUN_AZ - 0.12, 0.33))
+    }
+    contrail.uCP.value = sm(SUNRISE_VH[0] + 8, SUNRISE_VH[1] + 6, drive.vh)
+    contrail.uCI.value = sm(0.22, 0.55, drive.dawn)
     dome.position.copy(camera.position)
     stars.position.copy(camera.position)
     ;(stars.material as THREE.ShaderMaterial).uniforms.uOpacity.value = (0.35 + 0.65 * drive.climb) * (1 - sm(0.12, 0.6, drive.dawn)) * (drive.ready ? 1 : 0.4)

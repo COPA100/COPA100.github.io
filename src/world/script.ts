@@ -16,7 +16,7 @@ export const HOLDS: [number, number][] = [
   [426, 504],
   [580, 658],
 ]
-export const MARKER_VH = [790, 880]
+export const MARKER_VH = [760, 830, 900]
 export const OPEN_VH = 10
 export const OVERLOOK_VH = [985, 1015] as const
 // The sunrise: from parked under the stars to full gold, then a short rest on the final frame.
@@ -24,7 +24,7 @@ export const SUNRISE_VH = [OVERLOOK_VH[1], END_VH - 14] as const
 
 /** Night to sunrise, from scroll. A faint red line shows on the horizon past the markers. */
 export function dawnAt(vh: number) {
-  const hint = 0.12 * sm(MARKER_VH[0] - 40, MARKER_VH[1] + 40, vh)
+  const hint = 0.12 * sm(MARKER_VH[0] - 40, MARKER_VH[2] + 40, vh)
   return Math.max(hint, sm(SUNRISE_VH[0], SUNRISE_VH[1], vh))
 }
 
@@ -48,6 +48,8 @@ const DRIVE: [number, number][] = [
   [MARKER_VH[0] + 22, MARKER_S[0] + 8],
   [MARKER_VH[1] - 22, MARKER_S[1] - 8],
   [MARKER_VH[1] + 22, MARKER_S[1] + 8],
+  [MARKER_VH[2] - 22, MARKER_S[2] - 8],
+  [MARKER_VH[2] + 22, MARKER_S[2] + 8],
   [OVERLOOK_VH[0], PARK_S - 1.2],
   [OVERLOOK_VH[1], PARK_S],
   [END_VH, PARK_S],
@@ -134,8 +136,8 @@ export function keys(portrait: boolean): Key[] {
     [HOLDS[3][1], hold(3, P ? 17 : 26, hf)],
     [HOLDS[3][1] + 10, chase(cf, { az: 14 })],
     [MARKER_VH[0] - 60, { k: 'side', dist: P ? 17 : 17, h: P ? 1.4 : 1.7, lead: P ? 2.2 : 4.5, aimH: P ? 3.0 : 2.4, fov: P ? 52 : 34, env: HOLD_ENV }],
-    [MARKER_VH[1] + 46, { k: 'side', dist: P ? 17 : 17, h: P ? 1.4 : 1.7, lead: P ? 2.2 : 4.5, aimH: P ? 3.0 : 2.4, fov: P ? 52 : 34, env: HOLD_ENV }],
-    [OVERLOOK_VH[0] - 50, chase(cf, { az: -8, r: 11, h: 3.4 })],
+    [MARKER_VH[2] + 30, { k: 'side', dist: P ? 17 : 17, h: P ? 1.4 : 1.7, lead: P ? 2.2 : 4.5, aimH: P ? 3.0 : 2.4, fov: P ? 52 : 34, env: HOLD_ENV }],
+    [OVERLOOK_VH[0] - 45, chase(cf, { az: -8, r: 11, h: 3.4 })],
     // Parked at the top: low behind the car, the high beams running out over the drop.
     // The camera stands off to the left, so the two beams cross the frame out into the dark.
     [OVERLOOK_VH[0], { k: 'overlook', back: P ? 13 : 10, h: P ? 2.6 : 2.3, side: P ? 2.2 : 6.5, ahead: P ? 8 : 17, aimH: P ? -7 : -3, fov: P ? 64 : 46, env: OVER_ENV }],
@@ -168,6 +170,7 @@ export const CALM: [number, number][] = [
   [HOLDS[3][0], HOLDS[3][1]],
   [MARKER_VH[0] - 30, MARKER_VH[0] + 30],
   [MARKER_VH[1] - 30, MARKER_VH[1] + 30],
+  [MARKER_VH[2] - 30, MARKER_VH[2] + 30],
   [SUNRISE_VH[1], END_VH + 50],
 ]
 

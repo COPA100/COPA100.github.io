@@ -61,7 +61,7 @@ const roadFrag = /* glsl */ `
     col += vec3(1.0, 0.965, 0.92) * min(hl, 4.0) * 0.16;
     // Paint holds a faint, steady glow everywhere (starlight on retroreflective beads), so the
     // road reads the whole way up, not only inside the beam.
-    col += BONE * paint * (0.075 + 0.11 * uAmb + min(hl, 4.0) * 0.75);
+    col += BONE * paint * ((0.075 + 0.11 * uAmb) * pulseReveal(vP) + min(hl, 4.0) * 0.75 + pulseFront(vP) * 1.6);
     col += ACCENT * tailglow(vP) * (0.9 + paint);
     // Morning: grey asphalt under the sky, paint just paint.
     float day = smoothstep(0.3, 0.9, uDawn);

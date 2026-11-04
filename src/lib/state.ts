@@ -11,6 +11,8 @@ export const drive = {
   climb: 0, // 0..1 from trailhead to overlook
   dawn: 0, // 0..1 night to sunrise, at the summit
   ready: false,
+  lit: false, // the headlights have caught: the intro's cue for the title
+  since: 0, // seconds since the engine started
   vis: 1,
   high: 0,
   highTarget: 0,
@@ -31,6 +33,9 @@ export const U = {
   uHigh: { value: 0 },
   uAmb: { value: 0 },
   uDawn: { value: 0 },
+  // The opening survey pulse: radius in metres from the car, and how bright its leading edge is.
+  uPulse: { value: 0 },
+  uPulseA: { value: 0 },
   uSunDir: { value: new THREE.Vector3(0, 0, 1) },
   uEmberY: { value: 0 },
   uEmberA: { value: 0 },

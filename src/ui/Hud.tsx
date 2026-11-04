@@ -13,6 +13,8 @@ export function Hero() {
   useEffect(() => {
     const tick = () => {
       if (!ref.current) return
+      // The title waits in the dark and comes up with the headlights.
+      if (drive.lit && !ref.current.classList.contains('is-lit')) ref.current.classList.add('is-lit')
       // The credit clears as the car pulls away, a little faster than the scroll.
       const k = clamp01((drive.vh - 4) / 22)
       ref.current.style.opacity = String(1 - k)

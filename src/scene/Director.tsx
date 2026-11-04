@@ -74,9 +74,11 @@ export function Director() {
         // Head-on, low, a few car lengths up the road: the lamps catch, then the car comes at us.
         sample(START_S, f)
         const P = portrait
-        const ahead = P ? 17 : 14
+        // Arrival: the camera settles in from further off and higher as the lamps catch.
+        const k = reducedMotion ? 0 : Math.pow(1 - Math.min(1, drive.since / 3.6), 3)
+        const ahead = (P ? 17 : 14) + k * 16
         const side = P ? 0.6 : 2.6
-        out.pos.set(car.x + f.tx * ahead + f.rx * side, car.y + (P ? 1.9 : 1.7), car.z + f.tz * ahead + f.rz * side)
+        out.pos.set(car.x + f.tx * ahead + f.rx * side, car.y + (P ? 1.9 : 1.7) + k * 5, car.z + f.tz * ahead + f.rz * side)
         const tside = P ? 1 : 9
         out.tgt.set(car.x - f.tx * 30 + f.rx * tside, car.y + (P ? 7.5 : 5), car.z - f.tz * 30 + f.rz * tside)
         out.shift = P ? -0.12 : 0
@@ -176,7 +178,10 @@ export function Director() {
     U.uTime.value = time
 
     // Ignition: taillights come up first, then the headlights catch twice.
-    const since = drive.ready ? (performance.now() - st.t0) / 1000 : 0
+    // Dev only: __replay() restarts the intro, __slow stretches it, __freeze holds a moment.
+    const dev = import.meta.env.DEV ? (window as unknown as { __slow?: number; __freeze?: number; __replay?: () => void }) : null
+    if (dev && !dev.__replay) dev.__replay = () => ((st.t0 = performance.now()), (drive.lit = false))
+    const since = dev?.__freeze ?? (drive.ready ? (performance.now() - st.t0) / 1000 / (dev?.__slow ?? 1) : 0)
     if (!drive.ready) st.t0 = performance.now()
     if (reducedMotion) {
       U.uLights.value = drive.ready ? 1 : 0
@@ -185,6 +190,19 @@ export function Director() {
       U.uTail.value = Math.min(1, Math.max(0, (since - 0.5) / 0.3))
       const a = since - 0.95
       U.uLights.value = a < 0 ? 0 : a < 0.07 ? 0.7 : a < 0.16 ? 0.06 : Math.min(1, 0.55 + (a - 0.16) * 1.5)
+    }
+    drive.since = since
+    if (!drive.lit && (reducedMotion ? drive.ready : since > 1.15)) drive.lit = true
+    // As the lamps catch, a survey pulse runs out from the car and maps the mountain behind it.
+    if (reducedMotion) {
+      U.uPulse.value = 1e5
+      U.uPulseA.value = 0
+    } else {
+      // Slow off the car, accelerating out: the front lingers on the near slopes, where it's seen.
+      const p = Math.min(1, Math.max(0, (since - 1.12) / 3.0))
+      U.uPulse.value = p <= 0 ? 0 : 6 + 2600 * Math.pow(p, 2.2)
+      U.uPulseA.value = p <= 0 ? 0 : Math.min(1, p * 14) * (1 - sm(0.6, 1, p))
+      if (p >= 1) U.uPulse.value = 1e5
     }
 
     // Scroll is the throttle: distance comes from scroll position, nothing else.

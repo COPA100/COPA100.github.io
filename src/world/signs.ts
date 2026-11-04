@@ -24,7 +24,7 @@ export const holdS = (i: number) => [HAIRPINS[i] - 46, HAIRPINS[i] - 34] as cons
 
 const f = frame()
 
-export const MARKER_S = [0.36, 0.7].map((t) => {
+export const MARKER_S = [0.36, 0.58, 0.8].map((t) => {
   const a = HAIRPINS[3] + 40
   const b = END_S - 150
   return a + (b - a) * t

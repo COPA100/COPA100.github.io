@@ -373,8 +373,9 @@ export const Car = forwardRef<THREE.Group>(function Car(_, ref) {
       <mesh geometry={parts.barEnd} material={parts.tailM} position={[0.75, 0.84, 2.25]} rotation={[0, -0.5, 0]} />
       <mesh geometry={parts.head} material={parts.headM} position={[-0.6, 0.64, -2.27]} rotation={[0, 0.3, 0]} />
       <mesh geometry={parts.head} material={parts.headM} position={[0.6, 0.64, -2.27]} rotation={[0, -0.3, 0]} />
-      <mesh geometry={parts.cone} material={parts.beamM} position={[-0.6, 0.64, -2.3]} rotation={[0.02, 0.03, 0]} />
-      <mesh geometry={parts.cone} material={parts.beamM} position={[0.6, 0.64, -2.3]} rotation={[0.02, -0.03, 0]} />
+      {/* Drawn after the cloud deck, which is transparent and would otherwise paint over the far half. */}
+      <mesh geometry={parts.cone} material={parts.beamM} position={[-0.6, 0.64, -2.3]} rotation={[0.02, 0.03, 0]} renderOrder={5} />
+      <mesh geometry={parts.cone} material={parts.beamM} position={[0.6, 0.64, -2.3]} rotation={[0.02, -0.03, 0]} renderOrder={5} />
       <mesh material={parts.shadowM} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} renderOrder={1}>
         <planeGeometry args={[2.6, 5.4]} />
       </mesh>

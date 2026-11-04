@@ -79,10 +79,23 @@ html.lenis body {
   clip-path: inset(-0.1em -0.1em 0 -0.1em);
 }
 .hero-line {
-  animation: rise 1100ms var(--ease-out) both;
+  animation: rise 1400ms var(--ease-out) both;
 }
 .hero-line + .hero-line {
-  animation-delay: 90ms;
+  animation-delay: 110ms;
+}
+/* Everything in the title holds its first frame until the headlights catch. */
+.hero .hero-line,
+.hero .hero-role,
+.hero .hero-cue,
+.hero .hero-cue-key {
+  animation-play-state: paused;
+}
+.hero.is-lit .hero-line,
+.hero.is-lit .hero-role,
+.hero.is-lit .hero-cue,
+.hero.is-lit .hero-cue-key {
+  animation-play-state: running;
 }
 .hero-role {
   margin-top: clamp(18px, 2.2vw, 30px);
@@ -91,7 +104,7 @@ html.lenis body {
   font-size: clamp(19px, 1.65vw, 26px);
   letter-spacing: -0.005em;
   color: var(--bone);
-  animation: fade 900ms 260ms var(--ease-out) both;
+  animation: fade 900ms 420ms var(--ease-out) both;
 }
 .hero-sep {
   display: inline-block;
@@ -110,7 +123,7 @@ html.lenis body {
   gap: 12px;
   font-size: 14px;
   color: var(--ash);
-  animation: fade 900ms 1500ms var(--ease-out) both;
+  animation: fade 900ms 1700ms var(--ease-out) both;
 }
 .hero-cue-key {
   width: 1px;
@@ -121,12 +134,17 @@ html.lenis body {
 }
 @keyframes rise {
   from {
-    transform: translateY(0.62em);
+    transform: translateY(0.7em);
     opacity: 0;
+    filter: blur(10px);
+  }
+  60% {
+    filter: blur(0);
   }
   to {
     transform: none;
     opacity: 1;
+    filter: blur(0);
   }
 }
 @keyframes fade {

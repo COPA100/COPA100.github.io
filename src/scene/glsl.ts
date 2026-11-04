@@ -3,7 +3,7 @@
 
 export const COMMON = /* glsl */ `
 uniform vec3 uCar, uCarF, uCarR, uCarU, uSunDir;
-uniform float uSpeed, uBrake, uTime, uLights, uTail, uHigh, uAmb, uDawn, uEmberY, uEmberA, uFogN, uFogF, uDpr, uCarS;
+uniform float uSpeed, uBrake, uTime, uLights, uTail, uHigh, uAmb, uDawn, uPulse, uPulseA, uEmberY, uEmberA, uFogN, uFogF, uDpr, uCarS;
 const vec3 BONE = vec3(0.913, 0.894, 0.847);
 const vec3 ACCENT = vec3(1.0, 0.23, 0.13);
 
@@ -38,6 +38,19 @@ float tailglow(vec3 p) {
 
 float fogAmount(float dist) {
   return smoothstep(uFogN, uFogF, dist);
+}
+
+// ---- Opening pulse ----
+// How revealed a point is (0 ahead of the wave, 1 behind it), and the glow of the wave's front.
+float pulseReveal(vec3 p) {
+  float d = length(p.xz - uCar.xz);
+  return smoothstep(uPulse, uPulse - 60.0, d);
+}
+float pulseFront(vec3 p) {
+  float d = length(p.xz - uCar.xz);
+  // A crisp leading edge with a long afterglow trailing behind it.
+  float behind = uPulse - d;
+  return (exp(-abs(behind) / 6.0) + exp(-max(behind, 0.0) / 45.0) * 0.35) * smoothstep(-3.0, 1.0, behind) * uPulseA;
 }
 
 // ---- Dawn ----

@@ -7,6 +7,7 @@ import { HOLDS, MARKER_VH } from '../world/script'
 import { low, reducedMotion } from '../lib/tier'
 import { CLOUD_Y, SUMMIT } from '../world/terrain'
 import { COMMON } from './glsl'
+import { cloudK } from './Terrain'
 
 // The sea of clouds below the summit. All night it lies in the valleys as a faint grey floor the
 // high beams reach out over; at sunrise its tops catch the light. One big plane, shaded as a
@@ -95,7 +96,7 @@ export function Clouds() {
       new THREE.ShaderMaterial({
         vertexShader: vert,
         fragmentShader: frag,
-        uniforms: { ...U, uDrift: { value: 0 }, uCloud: { value: 0 } },
+        uniforms: { ...U, uDrift: { value: 0 }, uCloud: cloudK },
         transparent: true,
         depthWrite: false,
         // Premultiplied: the shader already multiplied colour by alpha.

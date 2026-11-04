@@ -24,7 +24,7 @@ const vert = /* glsl */ `
 const frag = /* glsl */ `
   precision highp float;
   ${COMMON}
-  uniform float uAppear;
+  uniform float uAppear, uCloud;
   varying vec3 vP;
   varying vec3 vN;
   varying float vDist;
@@ -60,7 +60,9 @@ const frag = /* glsl */ `
     float hl = headlights(vP);
     float lit = min(hl * 5.0, 2.4);
     float beamLines = max(max(minor, mid), max(index, micro * 0.55));
-    float line = (amb * uAmb + beamLines * lit) * survey;
+    // The opening pulse maps the mountain into existence: lines light up behind its front.
+    float line = (amb * uAmb * pulseReveal(vP) + beamLines * lit) * survey;
+    line += max(max(minor, mid), index) * pulseFront(vP) * 2.4;
 
     // A faint raking fill, so the ground has form where the lines are sparse.
     float key = max(dot(N, normalize(vec3(-0.5, 0.55, -0.62))), 0.0);
@@ -88,7 +90,9 @@ const frag = /* glsl */ `
     vec3 view = normalize(vP - cameraPosition);
     vec3 haze = hazeColor(view);
     // Where the slopes meet the cloud deck they go soft, as if the cloud wells up against them.
-    float mist = smoothstep(${CLOUD_Y + 70}.0, ${CLOUD_Y - 5}.0, h) * smoothstep(0.05, 0.6, uDawn);
+    // Far off, whole peaks standing out of the deck sink into it too, so none reads as a bare shard.
+    float wellsUp = mix(70.0, 190.0, smoothstep(250.0, 900.0, vDist));
+    float mist = smoothstep(${CLOUD_Y}.0 + wellsUp, ${CLOUD_Y - 5}.0, h) * smoothstep(0.05, 0.6, uDawn) * step(0.5, uCloud);
     col = mix(col, haze * 0.9, mist * 0.85);
 
     float fog = fogAmount(vDist);
@@ -98,11 +102,13 @@ const frag = /* glsl */ `
 `
 
 const appear = { value: 0 }
+// Shared with the cloud deck: the terrain only mists over once the deck is there.
+export const cloudK = { value: 0 }
 
 export const terrainMaterial = new THREE.ShaderMaterial({
   vertexShader: vert,
   fragmentShader: frag,
-  uniforms: { ...U, uAppear: appear },
+  uniforms: { ...U, uAppear: appear, uCloud: cloudK },
   extensions: { derivatives: true } as never,
 })
 

@@ -5,6 +5,7 @@ import { Clouds } from './Clouds'
 import { Director } from './Director'
 import { Mounts } from './Mounts'
 import { Post } from './Post'
+import { Props } from './Props'
 import { Road } from './Road'
 import { Sky } from './Sky'
 import { Terrain } from './Terrain'
@@ -35,6 +36,7 @@ export default function Scene({ portrait }: { portrait: boolean }) {
       <Clouds />
       <Road />
       <Mounts portrait={portrait} />
+      <Props />
       <Director />
       <Post />
     </Canvas>

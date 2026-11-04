@@ -34,17 +34,17 @@ export const projects: Project[] = [
     stack: ['Python', 'C++', 'React', 'AWS'],
     link: { href: 'https://github.com/COPA100/quantly', label: 'github.com/COPA100/quantly' },
     credit: 'Built solo.',
-    note: 'It replays your actual holdings through six market crashes since 2007 and shows what each position would have lost. The job pipeline behind it survives its own workers being killed mid-analysis, and a nightly test kills them on purpose.',
+    note: "A full-stack risk platform: it stress-tests a portfolio against real market crashes, estimates how far it could fall, and shows what's actually driving its returns. It runs on AWS, with a custom C++ engine doing the heavy math.",
   },
   {
     id: 'hackx',
     name: 'HackX',
     aside: 'HooHacks',
     line: 'The app that runs HooHacks on iOS, Android, and web.',
-    stack: ['React Native', 'Expo', 'TypeScript', 'Firebase'],
+    stack: ['React Native', 'Expo', 'TypeScript', 'Firebase', 'Sentry'],
     link: { href: 'https://app.hoohacks.io', label: 'app.hoohacks.io' },
-    credit: "Team project. I'm the top contributor and built the original QR and NFC check-in.",
-    note: 'Hackers apply and get a ticket that updates with their status, organizers check people in with a QR scan or an NFC badge tap, and judges score projects. Check-in went from two minutes to 45 seconds.',
+    credit: "Team project. I'm the top contributor.",
+    note: 'The cross-platform app that runs HooHacks end to end, from applications and check-in to judging, for hackers, judges, mentors, and organizers on iOS, Android, and the web.',
   },
   {
     id: 'idea-x',
@@ -54,7 +54,7 @@ export const projects: Project[] = [
     stack: ['React', 'Firebase', 'Vite', 'Playwright'],
     link: { href: 'https://hoohacks.github.io/idea-x/', label: 'hoohacks.github.io/idea-x' },
     credit: 'Team project, started in 2022. I led the 2026 rewrite and wrote most of the current code.',
-    note: "Organizers check people in, open submissions and publish a judging schedule that never double-books a judge, for $1,500 in prizes. Scores save on the judge's phone first, so dropped venue Wi-Fi can't lose one.",
+    note: 'It runs the whole competition day, from check-in and pitch submissions to judging and results, for a $1,500 prize pool.',
   },
   {
     id: 'biberty-blur',
@@ -67,13 +67,14 @@ export const projects: Project[] = [
   },
 ]
 
+// In the order they happened, which is the order they stand along the road.
 export const experience = [
   {
-    id: 'liberty-mutual',
-    org: 'Liberty Mutual',
-    role: 'Software Engineer Intern',
-    when: 'Jun–Aug 2026, returning summer 2027',
-    note: 'I built a pipeline that matches crash telemetry from 57,000 company devices to IT support tickets, so investigations start from the likely cause instead of a search.',
+    id: 'westwood-cares',
+    org: 'Westwood Cares Foundation',
+    role: 'Website Administrator',
+    when: 'Jul 2025–present',
+    note: "I optimized the charity's website, which has since brought in $40,000+ in donations.",
   },
   {
     id: 'hoohacks',
@@ -81,6 +82,13 @@ export const experience = [
     role: 'Technology Chair & Software Developer',
     when: 'Sep 2025–present',
     note: "I lead a 9-person team building the apps and sites for UVA's hackathon and Ideathon. 2,500+ registrants, 850+ attendees.",
+  },
+  {
+    id: 'liberty-mutual',
+    org: 'Liberty Mutual',
+    role: 'Software Engineer Intern',
+    when: 'Jun–Aug 2026, returning summer 2027',
+    note: 'I built a pipeline that matches crash telemetry from 57,000 company devices to IT support tickets, so investigations start from the likely cause instead of a search.',
   },
 ]
 

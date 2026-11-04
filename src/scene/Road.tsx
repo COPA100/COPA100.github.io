@@ -57,15 +57,28 @@ const roadFrag = /* glsl */ `
 
     float asphalt = 0.014;
     vec3 col = vec3(asphalt);
+    // The overlook: past the lane edge the lay-by is a pale concrete pad with parking stalls,
+    // so it reads as a place to stop rather than more road.
+    float padEdge = uHalf + 0.6;
+    float pad = smoothstep(padEdge - 0.05, padEdge + 0.05, vT) * smoothstep(0.5, 2.0, widen);
+    float grain = fract(sin(dot(floor(vP.xz * 9.0), vec2(12.9898, 78.233))) * 43758.5453);
+    float slab = step(0.06, fract(vS / 4.5)) * step(0.04, fract((vT - padEdge) / 4.0));
+    vec3 concrete = vec3(0.05, 0.048, 0.045) * (0.85 + 0.3 * grain) * mix(0.75, 1.0, slab);
+    col = mix(col, concrete, pad);
+    // Stalls square to the drop, a white line every 3.2 m along the pad.
+    float stall = band(fract(vS / 3.2) * 3.2, 1.6, 0.1) * smoothstep(padEdge + 0.8, padEdge + 1.2, vT) * step(vT, uHalf + 0.6 + widen - 0.6) * pad;
+    stall *= smoothstep(uEndS - 110.0, uEndS - 100.0, vS) * (1.0 - smoothstep(uEndS - 6.0, uEndS - 3.0, vS));
     // Asphalt takes the beam as a soft pool; paint is retroreflective and throws it back.
     col += vec3(1.0, 0.965, 0.92) * min(hl, 4.0) * 0.16;
     // Paint holds a faint, steady glow everywhere (starlight on retroreflective beads), so the
     // road reads the whole way up, not only inside the beam.
+    paint = clamp(paint + stall, 0.0, 1.0);
     col += BONE * paint * ((0.075 + 0.11 * uAmb) * pulseReveal(vP) + min(hl, 4.0) * 0.75 + pulseFront(vP) * 1.6);
     col += ACCENT * tailglow(vP) * (0.9 + paint);
     // Morning: grey asphalt under the sky, paint just paint.
     float day = smoothstep(0.3, 0.9, uDawn);
-    col += (vec3(0.05, 0.045, 0.045) + BONE * paint * 0.12) * (dawnZenith(uDawn) * 3.0 + sunColor(uDawn) * 0.25) * day * 2.0;
+    vec3 ground = mix(vec3(0.05, 0.045, 0.045), vec3(0.16, 0.15, 0.14) * (0.85 + 0.3 * grain) * mix(0.8, 1.0, slab), pad);
+    col += (ground + BONE * paint * 0.12) * (dawnZenith(uDawn) * 3.0 + sunColor(uDawn) * 0.25) * day * 2.0;
     float fog = fogAmount(vDist);
     col = mix(col, hazeColor(normalize(vP - cameraPosition)), fog);
     gl_FragColor = vec4(col * uAppear, 1.0);
@@ -147,6 +160,8 @@ const trailFrag = /* glsl */ `
     a += ahead * uAhead * dash * 0.45;
     vec3 c = mix(BONE * 0.8, ACCENT, done);
     float fog = fogAmount(vDist);
+    // The route line is a night thing: it fades as the sky lightens.
+    a *= 1.0 - smoothstep(0.12, 0.45, uDawn);
     gl_FragColor = vec4(c * a * (1.0 - fog), 1.0);
   }
 `

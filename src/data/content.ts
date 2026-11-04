@@ -49,12 +49,12 @@ export const projects: Project[] = [
   {
     id: 'idea-x',
     name: 'Idea X',
-    line: "The app behind UVA's one-day pitch competition.",
-    figure: { value: '160+', label: 'people used it on competition day' },
+    line: "The app that runs Ideathon, UVA's one-day pitch competition.",
+    figure: { value: '160+', label: 'people used it on the day' },
     stack: ['React', 'Firebase', 'Vite', 'Playwright'],
     link: { href: 'https://hoohacks.github.io/idea-x/', label: 'hoohacks.github.io/idea-x' },
-    credit: 'Team project, started in 2022. I led the 2026 rewrite and wrote most of the current code.',
-    note: 'It runs the whole competition day, from check-in and pitch submissions to judging and results, for a $1,500 prize pool.',
+    credit: 'Team project, started in 2022. I led the 2026 rewrite.',
+    note: 'It runs all of Ideathon day, from check-in and pitch submissions to judging and results, for a $1,500 prize pool.',
   },
   {
     id: 'biberty-blur',

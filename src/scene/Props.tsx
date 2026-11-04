@@ -7,11 +7,11 @@ import { CLOUD_Y } from '../world/terrain'
 import { COMMON } from './glsl'
 
 // The overlook at the top: a guardrail along the drop that wraps across the end of the road, red
-// reflector panels where the tarmac stops, a coin-op viewer beside the parking spot, boulders on
-// the edge and a stand of pines on both slopes. At night the beams pick them out; at sunrise they
+// reflector panels where the tarmac stops, a dry-stone wall along the overlook, boulders on the
+// edge and a stand of pines on both slopes. At night the beams pick them out; at sunrise they
 // stand as silhouettes against the sky and the cloud sea.
 
-const KIND = { rail: 0, reflector: 1, tree: 2, rock: 3, iron: 4 } as const
+const KIND = { rail: 0, reflector: 1, tree: 2, rock: 3, iron: 4, stone: 5 } as const
 
 type Part = { g: THREE.BufferGeometry; k: number }
 
@@ -77,16 +77,33 @@ function build() {
     }
   }
 
-  // Along the drop: the outer edge of the lay-by, from where it opens to the end of the road.
+  // Guardrail along the drop on the approach, up to where the overlook opens.
+  const WALL_S = END_S - 116
   const edge: (readonly [number, number, number])[] = []
-  const s0 = END_S - 150
-  for (let s = s0; s <= END_S + 0.01; s += 2.5) edge.push(at(s, halfRight(s) - 0.35))
+  for (let s = END_S - 190; s <= WALL_S + 0.01; s += 2.5) edge.push(at(s, halfRight(s) - 0.35))
+  rail(edge)
   // Then square across the end of the road, so the tarmac stops at something.
   const across: (readonly [number, number, number])[] = []
   const wR = halfRight(END_S) - 0.35
   const wL = -(halfLeft(END_S) - 0.35)
   for (let t = 0; t <= 1.0001; t += 1 / 6) across.push(at(END_S + 1.2, wR + (wL - wR) * t))
-  rail([...edge, ...across])
+  rail(across)
+
+  // The overlook itself: a low dry-stone wall along the lip of the pad, block by block.
+  // Blocks overlap their neighbours, so the wall stays continuous round the curve.
+  for (let s = WALL_S; s <= END_S + 0.6; s += 1.0) {
+    sample(s, f)
+    const yaw = Math.atan2(-f.tz, f.tx)
+    const [x, y, z] = at(s, halfRight(s) + 0.25)
+    // Tilted to the grade between its ends, so the courses run smooth instead of stepping.
+    const [ax, ay, az] = at(s - 0.75, halfRight(s - 0.75) + 0.25)
+    const [bx, by, bz] = at(s + 0.75, halfRight(s + 0.75) + 0.25)
+    const pitch = Math.atan2(by - ay, Math.hypot(bx - ax, bz - az))
+    const h = 0.66 + rnd() * 0.04
+    box(1.5, h, 0.55, KIND.stone, x, y + h / 2 - 0.05, z, yaw, pitch)
+    // A coping course on top, slightly proud.
+    box(1.5, 0.1, 0.64, KIND.stone, x, y + 0.72, z, yaw, pitch)
+  }
 
   // Red reflector panels on the end barrier, facing back down the road.
   sample(END_S + 1.2, f)
@@ -95,28 +112,6 @@ function build() {
     const [x, y, z] = at(END_S + 1.0, wR + (wL - wR) * t)
     box(0.6, 0.9, 0.05, KIND.reflector, x, y + 1.45, z, back)
     box(0.1, 1.9, 0.1, KIND.rail, x, y + 0.95, z, back)
-  }
-
-  // A coin-op viewer at the rail beside the parking spot, looking out over the drop.
-  {
-    const s = PARK_S + 7
-    sample(s, f)
-    const lat = halfRight(s) - 1.3
-    const [x, y, z] = at(s, lat)
-    // Local +x along the road's right vector: out over the drop.
-    const yaw = Math.atan2(-f.rz, f.rx)
-    const post = new THREE.CylinderGeometry(0.07, 0.11, 1.15, 10)
-    post.translate(x, y + 0.57, z)
-    parts.push({ g: post, k: KIND.iron })
-    box(0.22, 0.3, 0.42, KIND.iron, x, y + 1.25, z, yaw)
-    for (const side of [-0.11, 0.11]) {
-      const tube = new THREE.CylinderGeometry(0.07, 0.085, 0.42, 10)
-      tube.rotateZ(Math.PI / 2)
-      tube.translate(0.14, 0.06, side)
-      tube.rotateY(yaw)
-      tube.translate(x, y + 1.25, z)
-      parts.push({ g: tube, k: KIND.iron })
-    }
   }
 
   // Boulders on the lip, outside the rail.
@@ -206,7 +201,8 @@ const frag = /* glsl */ `
       : reflector ? ACCENT
       : vK < 2.5 ? vec3(0.035, 0.05, 0.04)
       : vK < 3.5 ? vec3(0.16, 0.15, 0.14)
-      : vec3(0.05, 0.05, 0.05);
+      : vK < 4.5 ? vec3(0.05, 0.05, 0.05)
+      : vec3(0.24, 0.22, 0.2);
 
     // Night: only what the lamps reach, plus a breath of starlight so shapes don't vanish.
     vec3 col = albedo * (0.02 + hl * (0.35 + 0.65 * abs(dot(N, normalize(uCarF)))));

@@ -1,10 +1,23 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
-import { quality } from '../lib/tier'
+import { quality, reducedMotion } from '../lib/tier'
 import { sm } from '../world/road'
 import { U, drive } from '../lib/state'
 import { COMMON } from './glsl'
+
+// Where the meteor runs, fixed relative to the camera the moment it starts.
+const meteor = {
+  uMA: { value: new THREE.Vector3() },
+  uMB: { value: new THREE.Vector3() },
+  uMT: { value: 0 },
+  uMI: { value: 0 },
+}
+const M_START = 2.35
+const M_LEN = 0.85
+const fwd = new THREE.Vector3()
+const right = new THREE.Vector3()
+const up = new THREE.Vector3(0, 1, 0)
 
 // A dome with a barely-there horizon, and a seeded field of stars that opens up as you climb.
 // At the summit it carries the sunrise: the gradient, the sun, and the far ranges above the clouds.
@@ -16,11 +29,13 @@ export function Sky() {
         side: THREE.BackSide,
         depthWrite: false,
         depthTest: false,
-        uniforms: { ...U },
+        uniforms: { ...U, ...meteor },
         vertexShader: `varying vec3 vD; void main(){ vD = normalize(position); vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }`,
         fragmentShader: /* glsl */ `precision highp float;
           ${COMMON}
           varying vec3 vD;
+          uniform vec3 uMA, uMB;
+          uniform float uMT, uMI;
 
           float h1(float n) { return fract(sin(n) * 43758.5453); }
           float n1(float x) { float i = floor(x); float f = fract(x); f = f * f * (3.0 - 2.0 * f); return mix(h1(i), h1(i + 1.0), f); }
@@ -55,6 +70,21 @@ export function Sky() {
             // Before any of that, past the last markers: one thin dark-red line along the horizon.
             float hint = smoothstep(0.0, 0.12, uDawn) * (1.0 - smoothstep(0.2, 0.45, uDawn));
             col += vec3(0.22, 0.04, 0.03) * hint * (0.35 + 0.65 * toward) * exp(-abs(h - 0.004) * 70.0);
+
+            // The opening's meteor: a hot head and a tapering tail, along an arc from uMA to uMB.
+            if (uMI > 0.0) {
+              vec3 head = normalize(mix(uMA, uMB, uMT));
+              vec3 tail = normalize(mix(uMA, uMB, max(uMT - 0.3, 0.0)));
+              vec3 ab = head - tail;
+              float t = clamp(dot(d - tail, ab) / max(dot(ab, ab), 1e-6), 0.0, 1.0);
+              float dist = length(d - (tail + ab * t));
+              float fade = pow(t, 1.4);
+              float core = exp(-dist / 0.0013) * fade;
+              float glow = exp(-dist / 0.007) * fade * 0.35;
+              float tip = exp(-length(d - head) / 0.003);
+              // A cool trail behind a white-hot head.
+              col += (vec3(0.75, 0.82, 1.0) * (core * 2.4 + glow) + vec3(1.0, 0.95, 0.88) * tip * 2.4) * uMI;
+            }
 
             // Far ranges standing out of the cloud sea, layered with distance, hazier the further.
             float a = atan(d.z, d.x) * 9.0;
@@ -113,6 +143,20 @@ export function Sky() {
   }, [])
 
   useFrame(({ camera }) => {
+    // Once, on arrival, a meteor crosses from high on the right to low on the left, behind the ridges.
+    const t = (drive.since - M_START) / M_LEN
+    if (reducedMotion || t < 0 || t > 1 || drive.vh > 30) meteor.uMI.value = 0
+    else {
+      if (meteor.uMI.value === 0) {
+        camera.getWorldDirection(fwd)
+        right.crossVectors(fwd, up).normalize()
+        meteor.uMA.value.copy(fwd).addScaledVector(right, 0.62).addScaledVector(up, 0.42).normalize()
+        meteor.uMB.value.copy(fwd).addScaledVector(right, -0.5).addScaledVector(up, 0.06).normalize()
+      }
+      // Fast in, a long fade: it burns out rather than stopping.
+      meteor.uMT.value = 1 - Math.pow(1 - t, 1.6)
+      meteor.uMI.value = Math.max(0.001, Math.sin(Math.PI * Math.min(1, t * 1.25)) * (1 - t * 0.4))
+    }
     dome.position.copy(camera.position)
     stars.position.copy(camera.position)
     ;(stars.material as THREE.ShaderMaterial).uniforms.uOpacity.value = (0.35 + 0.65 * drive.climb) * (1 - sm(0.12, 0.6, drive.dawn)) * (drive.ready ? 1 : 0.4)

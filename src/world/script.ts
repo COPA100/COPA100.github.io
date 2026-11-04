@@ -136,8 +136,10 @@ export function keys(portrait: boolean): Key[] {
     [HOLDS[3][1], hold(3, P ? 17 : 26, hf)],
     [HOLDS[3][1] + 10, chase(cf, { az: 14 })],
     [MARKER_VH[0] - 60, { k: 'side', dist: P ? 17 : 17, h: P ? 1.4 : 1.7, lead: P ? 2.2 : 4.5, aimH: P ? 3.0 : 2.4, fov: P ? 52 : 34, env: HOLD_ENV }],
-    [MARKER_VH[2] + 30, { k: 'side', dist: P ? 17 : 17, h: P ? 1.4 : 1.7, lead: P ? 2.2 : 4.5, aimH: P ? 3.0 : 2.4, fov: P ? 52 : 34, env: HOLD_ENV }],
-    [OVERLOOK_VH[0] - 45, chase(cf, { az: -8, r: 11, h: 3.4 })],
+    [MARKER_VH[2] + 26, { k: 'side', dist: P ? 17 : 17, h: P ? 1.4 : 1.7, lead: P ? 2.2 : 4.5, aimH: P ? 3.0 : 2.4, fov: P ? 52 : 34, env: HOLD_ENV }],
+    // Swing round behind the car on an arc, not a straight line through it: a key on the diagonal.
+    [MARKER_VH[2] + 50, chase(cf, { az: 30, r: 12, h: 3.4 })],
+    [OVERLOOK_VH[0] - 22, chase(cf, { az: -8, r: 11, h: 3.4 })],
     // Parked at the top: low behind the car, the high beams running out over the drop.
     // The camera stands off to the left, so the two beams cross the frame out into the dark.
     [OVERLOOK_VH[0], { k: 'overlook', back: P ? 13 : 10, h: P ? 2.6 : 2.3, side: P ? 2.2 : 6.5, ahead: P ? 8 : 17, aimH: P ? -7 : -3, fov: P ? 64 : 46, env: OVER_ENV }],

@@ -310,9 +310,10 @@ const shadowMat = () =>
   new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
-    uniforms: {},
+    uniforms: { uDawn: U.uDawn },
     vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-    fragmentShader: `varying vec2 vUv; void main(){ vec2 p = (vUv - 0.5) * 2.0; float d = length(p * vec2(1.0, 1.0)); float a = (1.0 - smoothstep(0.55, 1.0, d)) * 0.9; gl_FragColor = vec4(0.0, 0.0, 0.0, a); }`,
+    // By daylight it shrinks to a soft contact shadow; a dark slab under the car would read as an object.
+    fragmentShader: `uniform float uDawn; varying vec2 vUv; void main(){ vec2 p = (vUv - 0.5) * 2.0; float d = length(p * (1.0 + uDawn * 0.35)); float a = (1.0 - smoothstep(0.45, 1.0, d)) * mix(0.9, 0.5, smoothstep(0.2, 0.8, uDawn)); gl_FragColor = vec4(0.0, 0.0, 0.0, a); }`,
   })
 
 export const Car = forwardRef<THREE.Group>(function Car(_, ref) {

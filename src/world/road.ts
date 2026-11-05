@@ -212,20 +212,23 @@ export function groundAt(x: number, z: number) {
   // fill starts, so the terrain mesh, sampled on its own grid, can never rise through the edge.
   const out = Math.max(Math.abs(r.lat) - half - SHOULDER, r.past)
   const bed = r.y - 0.14
-  // Cuts and fills as real earthworks: a straight batter from the shoulder until it meets the
-  // natural slope, eased where they meet. (An S-curve blend held the ground nearly level for
-  // metres past the road, which read as a shelf jutting out over the drop.)
-  // The easing grows with distance, so right at the shoulder it can't lift the ground above the bed.
   if (out <= 0) return bed
-  const k = Math.min(3, out * 0.8)
-  return n < bed ? smax(n, bed - out * 1.5, k) : smin(n, bed + out * 1.15, k)
+  if (n < bed) {
+    // Fills fall away as a straight batter from the shoulder until they meet the natural slope.
+    // (An S-curve here held the ground level for metres past the road: a shelf over the drop.)
+    // The easing grows with distance, so at the shoulder it can't lift the ground above the bed.
+    return smax(n, bed - out * 1.5, Math.min(3, out * 0.8))
+  }
+  // Cuts rise gently out of a bench, about 1:1, so the boards and the coarse mesh have room.
+  const reach = Math.min(60, 3 + (n - bed) * 1.0)
+  const w = 1 - sm(0, reach, out)
+  return n + (bed - n) * w
 }
 
 const smax = (a: number, b: number, k: number) => {
   const h = Math.max(k - Math.abs(a - b), 0) / k
   return Math.max(a, b) + h * h * k * 0.25
 }
-const smin = (a: number, b: number, k: number) => -smax(-a, -b, k)
 
 /** Distance to the road, for the worker to sink coarse terrain under the fine strip. */
 export const roadDistance = (x: number, z: number) => nearest(x, z, 80).d

@@ -1,17 +1,14 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { U } from '../lib/state'
-import { low } from '../lib/tier'
-import { END_S, PARK_S, frame, groundAt, halfLeft, halfRight, nearest, sample } from '../world/road'
-import { CLOUD_Y } from '../world/terrain'
+import { END_S, frame, groundAt, halfLeft, halfRight, sample } from '../world/road'
 import { COMMON } from './glsl'
 
 // The overlook at the top: a guardrail along the drop that wraps across the end of the road, red
-// reflector panels where the tarmac stops, boulders on the edge and a stand of pines on both
-// slopes. At night the beams pick them out; at sunrise they
+// reflector panels where the tarmac stops and boulders on the edge. At night the beams pick them out; at sunrise they
 // stand as silhouettes against the sky and the cloud sea.
 
-const KIND = { rail: 0, reflector: 1, tree: 2, rock: 3, iron: 4 } as const
+const KIND = { rail: 0, reflector: 1, rock: 3, iron: 4 } as const
 
 type Part = { g: THREE.BufferGeometry; k: number }
 
@@ -129,41 +126,6 @@ function build() {
     parts.push({ g, k: KIND.rock })
   }
 
-  const pine = (x: number, y: number, z: number, h: number) => {
-    const trunk = new THREE.CylinderGeometry(0.12, 0.2, h * 0.3, 6)
-    trunk.translate(x, y + h * 0.15 - 0.2, z)
-    parts.push({ g: trunk, k: KIND.iron })
-    const tiers = 4
-    for (let t = 0; t < tiers; t++) {
-      const k = t / tiers
-      const r = h * (0.24 - k * 0.045)
-      const ch = h * (0.42 - k * 0.05)
-      const cone = new THREE.ConeGeometry(r, ch, low ? 6 : 8)
-      cone.rotateY(rnd() * Math.PI)
-      cone.translate(x, y + h * 0.2 + k * h * 0.22 + ch / 2, z)
-      parts.push({ g: cone, k: KIND.tree })
-    }
-  }
-
-  // Pines: a stand on the slope above the road and a few clinging below the rail.
-  const trees = low ? 26 : 44
-  for (let i = 0, placed = 0; i < trees * 6 && placed < trees; i++) {
-    const s = END_S - 260 + rnd() * 290
-    const up = rnd() < 0.62
-    const lat = up ? -(halfLeft(s) + 4 + rnd() * 45) : halfRight(s) + 4 + rnd() * 30
-    sample(s, f)
-    const x = f.x + f.rx * lat
-    const z = f.z + f.rz * lat
-    // Nothing between the parked car and the view.
-    if (!up && s > PARK_S - 90) continue
-    // Never on another leg of the road below.
-    if (nearest(x, z, 40).d < 7) continue
-    const y = groundAt(x, z)
-    if (y < CLOUD_Y + 40) continue
-    placed++
-    pine(x, y, z, 5 + rnd() * 8)
-  }
-
   return merge(parts)
 }
 
@@ -191,7 +153,6 @@ const frag = /* glsl */ `
     bool reflector = vK > 0.5 && vK < 1.5;
     vec3 albedo = vK < 0.5 ? vec3(0.42, 0.42, 0.40)
       : reflector ? ACCENT
-      : vK < 2.5 ? vec3(0.035, 0.05, 0.04)
       : vK < 3.5 ? vec3(0.16, 0.15, 0.14)
       : vec3(0.05, 0.05, 0.05);
 

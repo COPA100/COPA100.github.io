@@ -224,19 +224,23 @@ const wheelMat = () =>
   new THREE.ShaderMaterial({
     uniforms: { ...U },
     vertexShader: /* glsl */ `
-      varying vec3 vL; varying vec3 vN; varying vec3 vP;
+      varying vec3 vL; varying vec3 vN; varying vec3 vP; varying float vSide;
       void main() {
         vL = position; vN = normalize(mat3(modelMatrix) * normal);
+        // Each wheel is turned onto its side the opposite way, so its local frame is mirrored
+        // relative to the direction of travel: the left one's local x points up, the right one's down.
+        vSide = sign(modelMatrix[0].y + 1e-4);
         vec4 w = modelMatrix * vec4(position, 1.0); vP = w.xyz;
         gl_Position = projectionMatrix * viewMatrix * w;
       }`,
     fragmentShader: /* glsl */ `
       precision highp float;
       ${COMMON}
-      varying vec3 vL; varying vec3 vN; varying vec3 vP;
+      varying vec3 vL; varying vec3 vN; varying vec3 vP; varying float vSide;
       void main() {
         float rad = length(vL.xz);
-        float ang = atan(vL.z, vL.x) + uCarS / ${WHEEL_R.toFixed(3)};
+        // Roll forward: the top of the tyre moves toward the nose on both sides.
+        float ang = atan(vL.z, vL.x) + vSide * uCarS / ${WHEEL_R.toFixed(3)};
         vec3 col = vec3(0.006);
         vec3 V = normalize(cameraPosition - vP);
         if (abs(vL.y) > 0.11) {
@@ -306,9 +310,10 @@ const shadowMat = () =>
   new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
-    uniforms: {},
+    uniforms: { uDawn: U.uDawn },
     vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-    fragmentShader: `varying vec2 vUv; void main(){ vec2 p = (vUv - 0.5) * 2.0; float d = length(p * vec2(1.0, 1.0)); float a = (1.0 - smoothstep(0.55, 1.0, d)) * 0.9; gl_FragColor = vec4(0.0, 0.0, 0.0, a); }`,
+    // By daylight it shrinks to a soft contact shadow; a dark slab under the car would read as an object.
+    fragmentShader: `uniform float uDawn; varying vec2 vUv; void main(){ vec2 p = (vUv - 0.5) * 2.0; float d = length(p * (1.0 + uDawn * 0.35)); float a = (1.0 - smoothstep(0.45, 1.0, d)) * mix(0.9, 0.5, smoothstep(0.2, 0.8, uDawn)); gl_FragColor = vec4(0.0, 0.0, 0.0, a); }`,
   })
 
 export const Car = forwardRef<THREE.Group>(function Car(_, ref) {
@@ -369,8 +374,9 @@ export const Car = forwardRef<THREE.Group>(function Car(_, ref) {
       <mesh geometry={parts.barEnd} material={parts.tailM} position={[0.75, 0.84, 2.25]} rotation={[0, -0.5, 0]} />
       <mesh geometry={parts.head} material={parts.headM} position={[-0.6, 0.64, -2.27]} rotation={[0, 0.3, 0]} />
       <mesh geometry={parts.head} material={parts.headM} position={[0.6, 0.64, -2.27]} rotation={[0, -0.3, 0]} />
-      <mesh geometry={parts.cone} material={parts.beamM} position={[-0.6, 0.64, -2.3]} rotation={[0.02, 0.03, 0]} />
-      <mesh geometry={parts.cone} material={parts.beamM} position={[0.6, 0.64, -2.3]} rotation={[0.02, -0.03, 0]} />
+      {/* Drawn after the cloud deck, which is transparent and would otherwise paint over the far half. */}
+      <mesh geometry={parts.cone} material={parts.beamM} position={[-0.6, 0.64, -2.3]} rotation={[0.02, 0.03, 0]} renderOrder={5} />
+      <mesh geometry={parts.cone} material={parts.beamM} position={[0.6, 0.64, -2.3]} rotation={[0.02, -0.03, 0]} renderOrder={5} />
       <mesh material={parts.shadowM} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} renderOrder={1}>
         <planeGeometry args={[2.6, 5.4]} />
       </mesh>

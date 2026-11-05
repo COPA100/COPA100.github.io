@@ -2,8 +2,8 @@
 // all fall off together. There are no three.js lights anywhere.
 
 export const COMMON = /* glsl */ `
-uniform vec3 uCar, uCarF, uCarR, uCarU;
-uniform float uSpeed, uBrake, uTime, uLights, uTail, uHigh, uAmb, uMap, uEmberY, uEmberA, uFogN, uFogF, uDpr, uCarS;
+uniform vec3 uCar, uCarF, uCarR, uCarU, uSunDir;
+uniform float uSpeed, uBrake, uTime, uLights, uTail, uHigh, uAmb, uDawn, uPulse, uPulseA, uEmberY, uEmberA, uFogN, uFogF, uDpr, uCarS;
 const vec3 BONE = vec3(0.913, 0.894, 0.847);
 const vec3 ACCENT = vec3(1.0, 0.23, 0.13);
 
@@ -38,5 +38,43 @@ float tailglow(vec3 p) {
 
 float fogAmount(float dist) {
   return smoothstep(uFogN, uFogF, dist);
+}
+
+// ---- Opening pulse ----
+// How revealed a point is (0 ahead of the wave, 1 behind it), and the glow of the wave's front.
+float pulseReveal(vec3 p) {
+  float d = length(p.xz - uCar.xz);
+  return smoothstep(uPulse, uPulse - 60.0, d);
+}
+float pulseFront(vec3 p) {
+  float d = length(p.xz - uCar.xz);
+  // A crisp leading edge with a long afterglow trailing behind it.
+  float behind = uPulse - d;
+  return (exp(-abs(behind) / 6.0) + exp(-max(behind, 0.0) / 45.0) * 0.35) * smoothstep(-3.0, 1.0, behind) * uPulseA;
+}
+
+// ---- Dawn ----
+// One palette for the sky, the haze, the clouds and the sunlit ground, so the sunrise reads as
+// one light. Stages overlap: deep red first, then orange, then gold.
+vec3 dawnHorizon(float d) {
+  vec3 c = vec3(0.028, 0.03, 0.036);
+  c = mix(c, vec3(0.30, 0.07, 0.06), smoothstep(0.14, 0.42, d));
+  c = mix(c, vec3(0.95, 0.38, 0.16), smoothstep(0.3, 0.75, d));
+  c = mix(c, vec3(1.0, 0.72, 0.42), smoothstep(0.65, 1.0, d));
+  return c;
+}
+vec3 dawnZenith(float d) {
+  vec3 c = vec3(0.0);
+  c = mix(c, vec3(0.03, 0.03, 0.08), smoothstep(0.1, 0.5, d));
+  c = mix(c, vec3(0.09, 0.11, 0.24), smoothstep(0.5, 1.0, d));
+  return c;
+}
+vec3 sunColor(float d) {
+  return mix(vec3(1.0, 0.32, 0.12), vec3(1.0, 0.82, 0.6), smoothstep(0.45, 1.0, d)) * smoothstep(0.25, 0.75, d);
+}
+// The haze that distance fades into: black at night, the horizon colour by morning, warmer toward the sun.
+vec3 hazeColor(vec3 dir) {
+  float toward = pow(max(dot(normalize(vec3(dir.x, 0.0, dir.z)), normalize(vec3(uSunDir.x, 0.0, uSunDir.z))), 0.0), 3.0);
+  return dawnHorizon(uDawn) * (0.55 + 0.45 * toward);
 }
 `

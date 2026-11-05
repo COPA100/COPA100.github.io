@@ -4,6 +4,11 @@
 import * as THREE from 'three'
 import { U, drive } from '../lib/state'
 import { corners, normalOf, type SignDef } from '../world/signs'
+import { sm } from '../world/road'
+import { HOLDS, MARKER_VH } from '../world/script'
+import { boardIndex } from '../scene/Mounts'
+import { reducedMotion } from '../lib/tier'
+import { meshGround } from '../world/build'
 
 type Entry = {
   def: SignDef
@@ -16,6 +21,9 @@ type Entry = {
   shown: boolean
   lastOp: string
   normal: THREE.Vector3
+  struck: number // when the lamps were switched on, in seconds, or -1
+  clear: number // 0..1, eased: how much of the board the camera can actually see past the terrain
+  lampOp: string[]
 }
 
 const entries = new Map<string, Entry>()
@@ -23,7 +31,7 @@ const entries = new Map<string, Entry>()
 export function registerSign(def: SignDef, el: HTMLElement, pxW: number, pxH: number, vis: (vh: number) => number) {
   const c = corners(def).map(([x, y, z]) => new THREE.Vector3(x, y, z))
   const centre = new THREE.Vector3(...def.c)
-  entries.set(def.id, { def, el, pxW, pxH, corners: c, centre, vis, shown: false, lastOp: '', normal: new THREE.Vector3(...normalOf(def)) })
+  entries.set(def.id, { def, el, pxW, pxH, corners: c, centre, vis, shown: false, lastOp: '', normal: new THREE.Vector3(...normalOf(def)), struck: -1, lampOp: ['', '', '', ''], clear: 1 })
   return () => {
     entries.delete(def.id)
   }
@@ -80,10 +88,85 @@ function beamOn(p: THREE.Vector3) {
   return (lobe(p, bx, by, bz) * 2) * U.uLights.value
 }
 
+// How a sodium lamp strikes: a stutter of flashes, a dip, then it climbs to full.
+function strike(t: number) {
+  if (t <= 0) return 0
+  if (t < 0.05) return 0.9
+  if (t < 0.12) return 0.08
+  if (t < 0.16) return 1
+  if (t < 0.3) return 0.2
+  if (t < 0.34) return 0.75
+  return Math.min(1, 0.45 + (t - 0.34) * 1.6)
+}
+
+// Each board's lamps come on as the car pulls up to it, one after another, left to right.
+function updateLamps(en: Entry) {
+  const d = en.def
+  const i = boardIndex(d)
+  // Just after the board has faded in, so the strike-up is seen, not missed in the approach.
+  const a = d.kind === 'project' ? HOLDS[d.slot][0] + 2 : MARKER_VH[d.slot] - 58
+  const near = sm(a, a + 7, drive.vh)
+  const now = performance.now() / 1000
+  if (near > 0.5 && en.struck < 0) en.struck = now
+  if (near < 0.15) en.struck = -1
+  for (let j = 0; j < 4; j++) {
+    const lv = reducedMotion ? near : en.struck < 0 ? 0 : strike(now - en.struck - j * 0.11)
+    U.uLamp.value[i * 4 + j] = lv
+    const op = lv.toFixed(2)
+    if (op !== en.lampOp[j]) {
+      en.el.style.setProperty(`--l${j}`, op)
+      en.lampOp[j] = op
+    }
+  }
+}
+
+// The boards are HTML drawn over the canvas, so terrain can't hide them by itself. Sight rays from
+// the camera to points across the face tell how much of the board a hill is standing in front of.
+const probe = new THREE.Vector3()
+const FACE_PTS = [
+  [-0.42, -0.42],
+  [0.42, -0.42],
+  [0, -0.2],
+  [-0.42, 0.42],
+  [0.42, 0.42],
+  [0, 0.2],
+] as const
+function visibleShare(en: Entry, cam: THREE.Vector3) {
+  const d = en.def
+  let seen = 0
+  for (const [u, v] of FACE_PTS) {
+    const px = d.c[0] + d.right[0] * d.w * u
+    const py = d.c[1] + d.h * v
+    const pz = d.c[2] + d.right[2] * d.w * u
+    let hit = false
+    for (let k = 1; k < 12 && !hit; k++) {
+      const t = k / 12
+      probe.set(cam.x + (px - cam.x) * t, cam.y + (py - cam.y) * t, cam.z + (pz - cam.z) * t)
+      // A metre of slack: the rendered mesh sits a little under the true ground between vertices.
+      if (meshGround(probe.x, probe.z) > probe.y + 1.0) hit = true
+    }
+    if (!hit) seen++
+  }
+  return seen / FACE_PTS.length
+}
+
 export function updateSigns(cam: THREE.PerspectiveCamera, vw: number, vh: number) {
   entries.forEach((en) => {
+    updateLamps(en)
     const { el } = en
-    const vis = en.vis(drive.vh) * drive.vis
+    let vis = en.vis(drive.vh) * drive.vis
+    if (vis > 0.004) {
+      // Eased, so a ridge sliding across the view fades the board rather than popping it.
+      const target = visibleShare(en, cam.position)
+      en.clear += (target - en.clear) * (target < en.clear ? 0.35 : 0.12)
+      // Once the car has settled at a board the shot is composed for it: always show it in full.
+      const d = en.def
+      const settled =
+        d.kind === 'project'
+          ? sm(HOLDS[d.slot][0] + 8, HOLDS[d.slot][0] + 14, drive.vh) * (1 - sm(HOLDS[d.slot][1] - 4, HOLDS[d.slot][1] + 2, drive.vh))
+          : sm(MARKER_VH[d.slot] - 30, MARKER_VH[d.slot] - 20, drive.vh) * (1 - sm(MARKER_VH[d.slot] + 20, MARKER_VH[d.slot] + 30, drive.vh))
+      vis *= Math.max(settled, Math.min(1, Math.max(0, (en.clear - 0.5) * 2)))
+    }
     // Never show a board from behind or edge-on.
     const facing = tmp.copy(cam.position).sub(en.centre).normalize().dot(en.normal)
     let ok = vis > 0.004 && facing > 0.2

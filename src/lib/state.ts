@@ -9,8 +9,10 @@ export const drive = {
   mph: 0,
   feet: 0,
   climb: 0, // 0..1 from trailhead to overlook
-  map: 0, // 0..1 how far into the survey map we are
+  dawn: 0, // 0..1 night to sunrise, at the summit
   ready: false,
+  lit: false, // the headlights have caught: the intro's cue for the title
+  since: 0, // seconds since the engine started
   vis: 1,
   high: 0,
   highTarget: 0,
@@ -30,7 +32,13 @@ export const U = {
   uTail: { value: 0 },
   uHigh: { value: 0 },
   uAmb: { value: 0 },
-  uMap: { value: 0 },
+  uDawn: { value: 0 },
+  // The opening survey pulse: radius in metres from the car, and how bright its leading edge is.
+  uPulse: { value: 0 },
+  uPulseA: { value: 0 },
+  // Billboard lamps, four per board (four projects, then three experience markers): 0 off, 1 struck.
+  uLamp: { value: new Float32Array(28) },
+  uSunDir: { value: new THREE.Vector3(0, 0, 1) },
   uEmberY: { value: 0 },
   uEmberA: { value: 0 },
   uFogN: { value: 600 },

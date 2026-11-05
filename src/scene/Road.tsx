@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { quality } from '../lib/tier'
 import { U, drive } from '../lib/state'
-import { END_S, HALF, START_S, carLateral, frame, halfLeft, halfRight, sample, sm } from '../world/road'
+import { END_S, HALF, START_S, carLateral, frame, halfLeft, halfRight, headingAt, sample, sm } from '../world/road'
 import { COMMON } from './glsl'
 
 // ---- Asphalt and paint ----
@@ -61,10 +61,13 @@ const roadFrag = /* glsl */ `
     col += vec3(1.0, 0.965, 0.92) * min(hl, 4.0) * 0.16;
     // Paint holds a faint, steady glow everywhere (starlight on retroreflective beads), so the
     // road reads the whole way up, not only inside the beam.
-    col += BONE * paint * (0.075 + 0.11 * uAmb + min(hl, 4.0) * 0.75);
+    col += BONE * paint * ((0.075 + 0.11 * uAmb) * pulseReveal(vP) + min(hl, 4.0) * 0.75 + pulseFront(vP) * 1.6);
     col += ACCENT * tailglow(vP) * (0.9 + paint);
+    // Morning: grey asphalt under the sky, paint just paint.
+    float day = smoothstep(0.3, 0.9, uDawn);
+    col += (vec3(0.05, 0.045, 0.045) + BONE * paint * 0.12) * (dawnZenith(uDawn) * 3.0 + sunColor(uDawn) * 0.25) * day * 2.0;
     float fog = fogAmount(vDist);
-    col = mix(col, vec3(0.0), fog);
+    col = mix(col, hazeColor(normalize(vP - cameraPosition)), fog);
     gl_FragColor = vec4(col * uAppear, 1.0);
   }
 `
@@ -82,16 +85,36 @@ function roadGeometry() {
   for (let r = 0; r < rows; r++) {
     const s = Math.min(END_S, r * step)
     sample(s, f)
-    const cols = [-halfLeft(s), -HALF, 0, HALF, halfRight(s)]
-    cols.forEach((t) => {
-      pos.push(f.x + f.rx * t, f.y + 0.03, f.z + f.rz * t)
+    // Tarmac, plus a skirt each side that turns down under the shoulder, so no seam with the
+    // terrain can ever show at the edge.
+    const L = -halfLeft(s)
+    const R = halfRight(s)
+    // On the inside of a tight bend (the HackX hairpin turns on a 3 m radius) consecutive slices
+    // of the ribbon overlap, and a sloped skirt there would show as a dark seam across the road.
+    // So the inner skirt flattens away as the bend tightens.
+    const k = (headingAt(s + 1) - headingAt(s - 1)) / 2
+    const radius = 1 / Math.max(Math.abs(k), 1e-6)
+    const skirtL = k < 0 ? sm(halfLeft(s) + 2, halfLeft(s) + 10, radius) : 1
+    const skirtR = k > 0 ? sm(halfRight(s) + 2, halfRight(s) + 10, radius) : 1
+    const cols: [number, number][] = [
+      [L - 0.5 * skirtL, 0.03 - 0.48 * skirtL],
+      [L, 0.03],
+      [-HALF, 0.03],
+      [0, 0.03],
+      [HALF, 0.03],
+      [R, 0.03],
+      [R + 0.5 * skirtR, 0.03 - 0.48 * skirtR],
+    ]
+    cols.forEach(([t, dy]) => {
+      pos.push(f.x + f.rx * t, f.y + dy, f.z + f.rz * t)
       aS.push(s)
       aT.push(t)
     })
+    const n = cols.length
     if (r < rows - 1) {
-      for (let c = 0; c < 4; c++) {
-        const a = r * 5 + c
-        idx.push(a, a + 1, a + 5, a + 1, a + 6, a + 5)
+      for (let c = 0; c < n - 1; c++) {
+        const a = r * n + c
+        idx.push(a, a + 1, a + n, a + 1, a + n + 1, a + n)
       }
     }
   }
@@ -138,12 +161,14 @@ const trailFrag = /* glsl */ `
     // Hot just behind the car, settling to a thin steady line further back.
     float hot = exp(-max(behind, 0.0) / 70.0) * (0.25 + uSpeed * 1.4);
     float a = done * (uBase + hot);
-    // Ahead of the car, in the survey map: a faint dashed line still to drive.
+    // Ahead of the car, in the wide shots: a faint dashed line still to drive.
     float dash = step(0.5, fract(vS / 22.0));
     float ahead = (1.0 - step(0.0, behind)) * step(uStart, vS);
     a += ahead * uAhead * dash * 0.45;
     vec3 c = mix(BONE * 0.8, ACCENT, done);
-    float fog = fogAmount(vDist) * (1.0 - uMap);
+    float fog = fogAmount(vDist);
+    // The route line is a night thing: it fades as the sky lightens.
+    a *= 1.0 - smoothstep(0.12, 0.45, uDawn);
     gl_FragColor = vec4(c * a * (1.0 - fog), 1.0);
   }
 `
@@ -257,9 +282,8 @@ export function Road() {
 
   useFrame(() => {
     roadAppear.value = drive.ready ? Math.min(1, roadAppear.value + 0.03) : 0
-    // In the survey map the trail must read at any scale.
-    // Wide shots and the map show the whole route: driven in the accent, still to come dashed.
-    const wide = Math.max(U.uEmberA.value, sm(0.2, 0.9, drive.map))
+    // Wide shots show the whole route: driven in the accent, still to come dashed.
+    const wide = U.uEmberA.value
     trailUniforms.uLift.value = 0.55 + wide * 3
     trailUniforms.uBase.value = 0.16 + 0.84 * wide
     trailUniforms.uAhead.value = wide

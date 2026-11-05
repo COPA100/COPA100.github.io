@@ -4,16 +4,31 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { U, drive } from '../lib/state'
 import { forcedSpeed, low, reducedMotion } from '../lib/tier'
 import { END_S, PARK_S, START_S, carLateral, carYaw, frame, groundAt, sample, sm } from '../world/road'
-import { END_VH, MAP_VH, OVERLOOK_VH, calm, keys, roadAt, segmentAt, type Shot } from '../world/script'
+import { END_VH, OVERLOOK_VH, SUNRISE_VH, calm, dawnAt, keys, roadAt, segmentAt, type Shot } from '../world/script'
 import { holdS, signDefs } from '../world/signs'
 import { SUMMIT } from '../world/terrain'
 import { updateSigns } from '../ui/signSync'
 import { Car } from './Car'
 
+// The sun comes up ahead of the parked car and a little to its right, so the car stands
+// dark against the brightest part of the sky.
+const ROAD_T = new THREE.Vector3()
+const ROAD_R = new THREE.Vector3()
+
+export const SUN_AZ = (() => {
+  const f = sample(PARK_S)
+  return f.heading + carYaw(PARK_S) + 0.2
+})()
+const setSun = (dawn: number) => {
+  const el = -0.07 + 0.13 * sm(0.3, 1, dawn)
+  const c = Math.cos(el)
+  U.uSunDir.value.set(Math.sin(SUN_AZ) * c, Math.sin(el), -Math.cos(SUN_AZ) * c)
+}
+
 const damp = (a: number, b: number, l: number, dt: number) => a + (b - a) * (1 - Math.exp(-l * dt))
 
-type Pose = { pos: THREE.Vector3; tgt: THREE.Vector3; up: THREE.Vector3; fov: number; shift: number; amb: number; ember: number; fogN: number; fogF: number; map: number }
-const pose = (): Pose => ({ pos: new THREE.Vector3(), tgt: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), fov: 40, shift: 0, amb: 0, ember: 0, fogN: 0, fogF: 0, map: 0 })
+type Pose = { pos: THREE.Vector3; tgt: THREE.Vector3; up: THREE.Vector3; fov: number; shift: number; amb: number; ember: number; fogN: number; fogF: number }
+const pose = (): Pose => ({ pos: new THREE.Vector3(), tgt: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), fov: 40, shift: 0, amb: 0, ember: 0, fogN: 0, fogF: 0 })
 
 export const scrollVh = () => {
   const max = Math.max(1, document.documentElement.scrollHeight - innerHeight)
@@ -62,9 +77,11 @@ export function Director() {
         // Head-on, low, a few car lengths up the road: the lamps catch, then the car comes at us.
         sample(START_S, f)
         const P = portrait
-        const ahead = P ? 17 : 14
+        // Arrival: the camera settles in from further off and higher as the lamps catch.
+        const k = reducedMotion ? 0 : Math.pow(1 - Math.min(1, drive.since / 3.6), 3)
+        const ahead = (P ? 17 : 14) + k * 16
         const side = P ? 0.6 : 2.6
-        out.pos.set(car.x + f.tx * ahead + f.rx * side, car.y + (P ? 1.9 : 1.7), car.z + f.tz * ahead + f.rz * side)
+        out.pos.set(car.x + f.tx * ahead + f.rx * side, car.y + (P ? 1.9 : 1.7) + k * 5, car.z + f.tz * ahead + f.rz * side)
         const tside = P ? 1 : 9
         out.tgt.set(car.x - f.tx * 30 + f.rx * tside, car.y + (P ? 7.5 : 5), car.z - f.tz * 30 + f.rz * tside)
         out.shift = P ? -0.12 : 0
@@ -155,15 +172,6 @@ export function Director() {
         out.shift = 0
         break
       }
-      case 'top': {
-        // Straight down over the massif, north up, with the route clear of the contact block.
-        const cx = SUMMIT.x + (portrait ? -60 : -260)
-        const cz = SUMMIT.z + (portrait ? 230 : 40)
-        out.pos.set(cx, SUMMIT.h + shot.h, cz)
-        out.tgt.set(cx, 0, cz - 0.001)
-        out.up.set(0, 0, -1)
-        break
-      }
     }
   }
 
@@ -173,15 +181,31 @@ export function Director() {
     U.uTime.value = time
 
     // Ignition: taillights come up first, then the headlights catch twice.
-    const since = drive.ready ? (performance.now() - st.t0) / 1000 : 0
+    // Dev only: __replay() restarts the intro, __slow stretches it, __freeze holds a moment.
+    const dev = import.meta.env.DEV ? (window as unknown as { __slow?: number; __freeze?: number; __replay?: () => void }) : null
+    if (dev && !dev.__replay) dev.__replay = () => ((st.t0 = performance.now()), (drive.lit = false))
+    const since = dev?.__freeze ?? (drive.ready ? (performance.now() - st.t0) / 1000 / (dev?.__slow ?? 1) : 0)
     if (!drive.ready) st.t0 = performance.now()
     if (reducedMotion) {
       U.uLights.value = drive.ready ? 1 : 0
       U.uTail.value = drive.ready ? 1 : 0
     } else {
-      U.uTail.value = Math.min(1, Math.max(0, (since - 0.5) / 0.3))
-      const a = since - 0.95
+      U.uTail.value = Math.min(1, Math.max(0, (since - 0.12) / 0.3))
+      const a = since - 0.5
       U.uLights.value = a < 0 ? 0 : a < 0.07 ? 0.7 : a < 0.16 ? 0.06 : Math.min(1, 0.55 + (a - 0.16) * 1.5)
+    }
+    drive.since = since
+    if (!drive.lit && (reducedMotion ? drive.ready : since > 0.7)) drive.lit = true
+    // As the lamps catch, a survey pulse runs out from the car and maps the mountain behind it.
+    if (reducedMotion) {
+      U.uPulse.value = 1e5
+      U.uPulseA.value = 0
+    } else {
+      // Slow off the car, accelerating out: the front lingers on the near slopes, where it's seen.
+      const p = Math.min(1, Math.max(0, (since - 0.67) / 3.0))
+      U.uPulse.value = p <= 0 ? 0 : 6 + 2600 * Math.pow(p, 2.2)
+      U.uPulseA.value = p <= 0 ? 0 : Math.min(1, p * 14) * (1 - sm(0.6, 1, p))
+      if (p >= 1) U.uPulse.value = 1e5
     }
 
     // Scroll is the throttle: distance comes from scroll position, nothing else.
@@ -210,7 +234,13 @@ export function Director() {
     const braking = Math.max(1 - absV / 3, Math.min(1, (-st.accel * Math.sign(st.v || 1)) / 80))
     U.uBrake.value = damp(U.uBrake.value, Math.max(0, braking), 10, dt)
     // Parked at the overlook, the driver flicks the high beams on and lights the drop.
-    const brights = sm(OVERLOOK_VH[0] - 26, OVERLOOK_VH[0] + 4, vh) * (1 - sm(MAP_VH[0] - 20, MAP_VH[0] + 10, vh))
+    const dawn = dawnAt(vh)
+    drive.dawn = dawn
+    U.uDawn.value = dawn
+    setSun(dawn)
+    // As daylight takes over, the lamps stop mattering: the beams fade, the taillights stay.
+    U.uLights.value *= 1 - 0.85 * sm(0.45, 0.95, dawn)
+    const brights = sm(OVERLOOK_VH[0] - 26, OVERLOOK_VH[0] + 4, vh) * (1 - sm(SUNRISE_VH[0] + 10, SUNRISE_VH[0] + 50, vh))
     drive.high = damp(drive.high, Math.max(drive.highTarget, brights), brights > drive.high ? 5 : 12, dt)
     U.uHigh.value = drive.high
 
@@ -226,7 +256,21 @@ export function Director() {
     st.R.set(Math.cos(heading), 0, Math.sin(heading))
     st.Up.crossVectors(st.R, st.F).normalize()
     st.car.set(f.x + f.rx * lat, f.y, f.z + f.rz * lat)
-    if (st.s > END_S - 130) st.car.y = Math.max(f.y, groundAt(st.car.x, st.car.z) + 0.14)
+    if (st.s > END_S - 130) {
+      st.car.y = Math.max(f.y, groundAt(st.car.x, st.car.z) + 0.14)
+      // In the lay-by the car sits on the road surface it's parked on: turned across the road, it
+      // takes the road's grade as a side-to-side lean instead of sitting level. The surface normal
+      // comes from the road itself, which is smooth, not from terrain samples around the car,
+      // which jump as they cross the road edge and made the car twitch.
+      const k = sm(END_S - 130, END_S - 95, st.s)
+      const tl = Math.hypot(1, f.grade)
+      ROAD_T.set(f.tx / tl, f.grade / tl, f.tz / tl) // along the road, up the grade
+      ROAD_R.set(f.rx, 0, f.rz)
+      st.tmp.crossVectors(ROAD_R, ROAD_T).normalize() // the road surface's normal
+      st.Up.lerp(st.tmp, k).normalize()
+      st.F.addScaledVector(st.Up, -st.F.dot(st.Up)).normalize()
+      st.R.crossVectors(st.F, st.Up).normalize()
+    }
     U.uCar.value.copy(st.car)
     U.uCarF.value.copy(st.F)
     U.uCarR.value.copy(st.R)
@@ -239,7 +283,10 @@ export function Director() {
       st.m.makeBasis(st.R, st.Up, st.tmp.copy(st.F).negate())
       car.quaternion.setFromRotationMatrix(st.m)
       // Squat on acceleration, a faint engine shudder at idle.
-      const squat = reducedMotion ? 0 : Math.max(-0.016, Math.min(0.02, st.accel * 0.0004))
+      // Pulling into the lay-by it creeps in short stop-starts as the wheel scrolls, and the squat
+      // would nod it back and forth, so it settles out there.
+      const settle = 1 - sm(END_S - 140, END_S - 100, st.s)
+      const squat = reducedMotion ? 0 : Math.max(-0.016, Math.min(0.02, st.accel * 0.0004)) * settle
       car.rotateX(squat)
       const idle = reducedMotion ? 0 : (1 - Math.min(1, speed * 6)) * Math.sin(time * 31) * 0.0012
       car.position.copy(st.car)
@@ -261,22 +308,19 @@ export function Director() {
     U.uEmberA.value = pa.ember + (pb.ember - pa.ember) * t
     U.uFogN.value = pa.fogN + (pb.fogN - pa.fogN) * t
     U.uFogF.value = pa.fogF + (pb.fogF - pa.fogF) * t
-    drive.map = pa.map + (pb.map - pa.map) * t
-    U.uMap.value = drive.map
     U.uEmberY.value = st.car.y
 
     // Pointer parallax on desktop, sprung so it never feels attached to the mouse.
-    const live = 1 - drive.map
     if (!low && !reducedMotion) {
       st.px = damp(st.px, pointer.x, 2.2, dt)
       st.py = damp(st.py, pointer.y, 2.2, dt)
-      pos.x += st.R.x * st.px * 0.6 * live
-      pos.z += st.R.z * st.px * 0.6 * live
-      pos.y += st.py * 0.3 * live
+      pos.x += st.R.x * st.px * 0.6
+      pos.z += st.R.z * st.px * 0.6
+      pos.y += st.py * 0.3
     }
     if (!reducedMotion) {
       // Road vibration climbs with speed; barely a tremor when idling.
-      const k = (speed * speed * 0.045 + 0.001) * live * Math.max(0, 1 - pos.distanceTo(st.car) / 60)
+      const k = (speed * speed * 0.045 + 0.001) * Math.max(0, 1 - pos.distanceTo(st.car) / 60)
       pos.x += Math.sin(time * 41.3) * k * 0.6
       pos.y += Math.sin(time * 47.9 + 1.3) * k
     }
@@ -300,7 +344,7 @@ export function Director() {
     camera.up.copy(up)
     camera.lookAt(tgt)
     const aspect = size.width / size.height
-    const kick = reducedMotion ? 0 : speed * 9 * live
+    const kick = reducedMotion ? 0 : speed * 9
     cam.fov = (dbg?.fov ?? fov) + kick
     cam.aspect = aspect
     // Keep near/far sane from a few metres to the survey altitude.
@@ -328,12 +372,11 @@ export function Director() {
       perf.last = time
     }
     U.uDpr.value = state.gl.getPixelRatio()
-    U.uPx.value = (Math.tan((cam.fov * Math.PI) / 360) * 2 * (0.8 + drive.map * 0.6)) / size.height
+    U.uPx.value = (Math.tan((cam.fov * Math.PI) / 360) * 2 * 0.8) / size.height
     drive.vis = vis
-    if (import.meta.env.DEV) (window as unknown as { __dbg: unknown }).__dbg = { cam: pos.toArray().map(Math.round), tgt: tgt.toArray().map(Math.round), car: st.car.toArray().map(Math.round), s: Math.round(st.s), vh: Math.round(vh) }
+    if (import.meta.env.DEV) (window as unknown as { __dbg: unknown }).__dbg = { cam: pos.toArray().map(Math.round), tgt: tgt.toArray().map(Math.round), car: st.car.toArray().map(Math.round), s: Math.round(st.s), vh: Math.round(vh), up: st.Up.toArray().map((v) => +v.toFixed(4)), f: st.F.toArray().map((v) => +v.toFixed(4)) }
     updateSigns(cam, size.width, size.height)
   }, 0)
 
-  void MAP_VH
   return <Car ref={carRef} />
 }

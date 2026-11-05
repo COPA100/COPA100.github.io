@@ -164,8 +164,10 @@ export function Post() {
     for (let i = chain.length - 1; i > 0; i--) blit(chain[i], chain[i - 1], up, false)
 
     const u = composite.uniforms
-    u.uSpeedFx.value = reducedMotion ? 0 : U.uSpeed.value * (1 - drive.map)
-    u.uVis.value = drive.vis
+    u.uSpeedFx.value = reducedMotion ? 0 : U.uSpeed.value
+    // Black until the mountain is built, then up from black: never the half-built scene.
+    const born = drive.ready ? Math.min(1, drive.since / 0.45) : 0
+    u.uVis.value = drive.vis * born * born
     camera.getWorldDirection(tmpDir)
     tmpP.copy(camera.position).addScaledVector(tmpDir, 100).project(camera)
     u.uVP.value.set(tmpP.x * 0.5 + 0.5, tmpP.y * 0.5 + 0.5)

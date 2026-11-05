@@ -1,11 +1,11 @@
-import { useEffect } from 'react'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas } from '@react-three/fiber'
 import * as THREE from 'three'
 import { quality } from '../lib/tier'
-import { camRef } from '../ui/Hud'
+import { Clouds } from './Clouds'
 import { Director } from './Director'
 import { Mounts } from './Mounts'
 import { Post } from './Post'
+import { Props } from './Props'
 import { Road } from './Road'
 import { Sky } from './Sky'
 import { Terrain } from './Terrain'
@@ -15,16 +15,6 @@ THREE.setConsoleFunction((level, message, ...rest) => {
   if (typeof message === 'string' && message.includes('THREE.Clock')) return
   ;(console as unknown as Record<string, (...a: unknown[]) => void>)[level](message, ...rest)
 })
-
-function Share() {
-  const { camera, size } = useThree()
-  useEffect(() => {
-    camRef.cam = camera as THREE.PerspectiveCamera
-    camRef.w = size.width
-    camRef.h = size.height
-  }, [camera, size])
-  return null
-}
 
 export default function Scene({ portrait }: { portrait: boolean }) {
   return (
@@ -41,11 +31,12 @@ export default function Scene({ portrait }: { portrait: boolean }) {
         gl.setClearColor(0x000000, 1)
       }}
     >
-      <Share />
       <Sky />
       <Terrain />
+      <Clouds />
       <Road />
       <Mounts portrait={portrait} />
+      <Props />
       <Director />
       <Post />
     </Canvas>

@@ -1,6 +1,78 @@
 // Mesh builders for the terrain worker. Plain arrays only, so they also run on the main thread.
 import { END_S, groundAt, nearest, sample, frame } from './road.ts'
 import { SUMMIT } from './terrain.ts'
+import { signDefs } from './signs.ts'
+
+// Every board, in both its wide and upright layouts. The terrain mesh is carved down under each
+// one, so no hillside ever passes through a board, its frame or its catwalk.
+const BOARDS = [...signDefs(false), ...signDefs(true)].map((d) => ({
+  c: d.c,
+  r: d.right,
+  n: [-d.right[2], d.right[0]] as const,
+  hw: d.w / 2 + 1.6,
+  cap: d.c[1] - d.h / 2 - 1.6,
+}))
+
+// And a clear line of sight to every project board from where the car waits under it: a wedge
+// from a point behind the waiting car out to the board's lower edge. Ground inside the wedge stays
+// below the sightline, so no hill stands between the camera and a board. (The boards are HTML
+// drawn over the scene, so terrain in front of one would otherwise appear behind it.)
+const SIGHTS = [...signDefs(false), ...signDefs(true)]
+  .filter((d) => d.kind === 'project')
+  .map((d) => {
+    const [ex, ey, ez] = d.eye
+    let fx = d.c[0] - ex
+    let fz = d.c[2] - ez
+    const fl = Math.hypot(fx, fz)
+    fx /= fl
+    fz /= fl
+    const back = 34
+    const ax = ex - fx * back
+    const az = ez - fz * back
+    const hw = d.w / 2 + 2
+    return {
+      a: [ax, ey + 1.0, az] as const,
+      l: [d.c[0] - d.right[0] * hw, d.c[2] - d.right[2] * hw] as const,
+      r: [d.c[0] + d.right[0] * hw, d.c[2] + d.right[2] * hw] as const,
+      len: fl + back,
+      f: [fx, fz] as const,
+      bottom: d.c[1] - d.h / 2 - 1.6,
+    }
+  })
+
+const side = (ax: number, az: number, bx: number, bz: number, px: number, pz: number) => (bx - ax) * (pz - az) - (bz - az) * (px - ax)
+
+/** The ground as meshed: the true ground, but never above a board's clearance. */
+export function meshGround(x: number, z: number) {
+  let y = groundAt(x, z)
+  for (const v of SIGHTS) {
+    const [ax, ay, az] = v.a
+    // Inside the plan-view triangle from the apex to the board's widened bottom edge?
+    const s1 = side(ax, az, v.l[0], v.l[1], x, z)
+    const s2 = side(v.l[0], v.l[1], v.r[0], v.r[1], x, z)
+    const s3 = side(v.r[0], v.r[1], ax, az, x, z)
+    if ((s1 < 0 || s2 < 0 || s3 < 0) && (s1 > 0 || s2 > 0 || s3 > 0)) continue
+    const t = Math.min(1, Math.max(0, ((x - ax) * v.f[0] + (z - az) * v.f[1]) / v.len))
+    const cap = ay + (v.bottom - ay) * t - 0.8
+    if (cap >= y) continue
+    // Never dig out the ground under a road (another leg of the climb can cross the wedge).
+    const r = nearest(x, z, 16)
+    if (r.d < 12 && r.y - 0.2 > cap) continue
+    y = cap
+  }
+  for (const b of BOARDS) {
+    const dx = x - b.c[0]
+    const dz = z - b.c[2]
+    // Far from a board its clearance is far above any ground nearby; skip the work.
+    if (dx * dx + dz * dz > (b.hw + 30) * (b.hw + 30)) continue
+    const u = Math.abs(dx * b.r[0] + dz * b.r[2]) - b.hw
+    const v = dx * b.n[0] + dz * b.n[1]
+    // Clear from 5 m behind the face to 3 m in front of it, easing back up at about 1:1 outside.
+    const out = Math.hypot(Math.max(u, 0), Math.max(v - 3, -5 - v, 0))
+    y = Math.min(y, b.cap + out)
+  }
+  return y
+}
 
 export type Buffers = { position: Float32Array; normal: Float32Array; index: Uint32Array }
 
@@ -19,7 +91,7 @@ export function buildCoarse(segments: number, extent = 4200, warp = 1.42): Buffe
     for (let i = 0; i < n; i++, k += 3) {
       const x = SUMMIT.x + ax[i]
       const z = SUMMIT.z + ax[j]
-      let y = groundAt(x, z)
+      let y = meshGround(x, z)
       // Sink under the fine road strip so the coarse facets never poke through it.
       const d = nearest(x, z, STRIP_W + 4).d
       if (d < STRIP_W) y -= 4 * (1 - smooth(STRIP_W - 16, STRIP_W - 3, d))
@@ -78,22 +150,39 @@ export function buildStrip(step: number, cols: number): Buffers {
       const x = f.x + f.rx * offs[c]
       const z = f.z + f.rz * offs[c]
       position[k] = x
-      position[k + 1] = groundAt(x, z)
+      // The outermost column turns down into a skirt, so the strip's edge tucks under the coarse
+      // mountain instead of standing proud of it as a ledge.
+      position[k + 1] = meshGround(x, z) - (c === 0 || c === m - 1 ? 6 : 0)
       position[k + 2] = z
-      const hx = (groundAt(x + e, z) - groundAt(x - e, z)) / (2 * e)
-      const hz = (groundAt(x, z + e) - groundAt(x, z - e)) / (2 * e)
+      const hx = (meshGround(x + e, z) - meshGround(x - e, z)) / (2 * e)
+      const hz = (meshGround(x, z + e) - meshGround(x, z - e)) / (2 * e)
       const l = 1 / Math.hypot(hx, 1, hz)
       normal[k] = -hx * l
       normal[k + 1] = l
       normal[k + 2] = -hz * l
     }
   }
-  const index = new Uint32Array((rows - 1) * (m - 1) * 6)
-  for (let r = 0, k = 0; r < rows - 1; r++) {
-    for (let c = 0; c < m - 1; c++, k += 6) {
+  // On the inside of a tight bend the cross-sections overlap, and the ribbon folds back over
+  // itself: those triangles come out flipped and stretched, standing up as panels across the road
+  // or vanishing from behind. Keep only triangles that face the same way as an unfolded strip and
+  // aren't stretched far beyond their neighbours.
+  const tri: number[] = []
+  const ok = (i: number, j: number, k: number) => {
+    const ax = position[i * 3], az = position[i * 3 + 2]
+    const bx = position[j * 3] - ax, bz = position[j * 3 + 2] - az
+    const cx = position[k * 3] - ax, cz = position[k * 3 + 2] - az
+    // Facing: an unfolded strip triangle winds one consistent way in plan view.
+    if (bz * cx - bx * cz <= 0.02) return false
+    const l2 = (x: number, z: number) => x * x + z * z
+    const longest = Math.max(l2(bx, bz), l2(cx, cz), l2(cx - bx, cz - bz))
+    return longest < 70 * 70
+  }
+  for (let r = 0; r < rows - 1; r++) {
+    for (let c = 0; c < m - 1; c++) {
       const a = r * m + c
-      index.set([a, a + 1, a + m, a + 1, a + m + 1, a + m], k)
+      if (ok(a, a + 1, a + m)) tri.push(a, a + 1, a + m)
+      if (ok(a + 1, a + m + 1, a + m)) tri.push(a + 1, a + m + 1, a + m)
     }
   }
-  return { position, normal, index }
+  return { position, normal, index: new Uint32Array(tri) }
 }

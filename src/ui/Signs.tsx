@@ -53,6 +53,8 @@ function ProjectSign({ d }: { d: SignDef }) {
   const p = projects[d.slot]
   return (
     <>
+      {/* Light from the four lamps above, each its own pool, so they strike one by one. */}
+      <Lamps />
       <header className="sign-top">
         <Hairpin turn={d.turn} />
         {p.aside && <span className="sign-aside">{p.aside}</span>}
@@ -73,19 +75,21 @@ function ProjectSign({ d }: { d: SignDef }) {
             <li key={s}>{s}</li>
           ))}
         </ul>
-        <a
-          className="sign-link"
-          href={p.link.href}
-          target="_blank"
-          rel="noreferrer"
-          onPointerEnter={beamOn}
-          onPointerLeave={beamOff}
-          onFocus={beamOn}
-          onBlur={beamOff}
-        >
-          <span>{p.link.label}</span>
-          <span className="sr-only"> (opens in a new tab)</span>
-        </a>
+        {p.link && (
+          <a
+            className="sign-link"
+            href={p.link.href}
+            target="_blank"
+            rel="noreferrer"
+            onPointerEnter={beamOn}
+            onPointerLeave={beamOff}
+            onFocus={beamOn}
+            onBlur={beamOff}
+          >
+            <span>{p.link.label}</span>
+            <span className="sr-only"> (opens in a new tab)</span>
+          </a>
+        )}
       </footer>
       {/* The note is drawn beside the sign once the car stops; screen readers get it here. */}
       <p className="sr-only">
@@ -95,10 +99,22 @@ function ProjectSign({ d }: { d: SignDef }) {
   )
 }
 
+function Lamps() {
+  return (
+    <div className="sign-lamps" aria-hidden>
+      <i />
+      <i />
+      <i />
+      <i />
+    </div>
+  )
+}
+
 function MarkerSign({ d }: { d: SignDef }) {
   const j = experience[d.slot]
   return (
     <>
+      <Lamps />
       <p className="marker-when">{j.when}</p>
       <h3 className="marker-org">{j.org}</h3>
       <p className="marker-role">{j.role}</p>

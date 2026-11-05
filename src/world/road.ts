@@ -200,19 +200,34 @@ export function relief(x: number, z: number) {
   return k * amp * (125 * a * a + 40 * b - 55)
 }
 
+const SHOULDER = 1.1
+
 /** Ground height with the road benched into the mountain: cuts above, fills below. */
 export function groundAt(x: number, z: number) {
   const r = nearest(x, z, 70)
   if (r.d === Infinity) return natural(x, z) + relief(x, z)
   const n = natural(x, z) + relief(x, z) * sm(18, 66, r.d)
   const half = r.lat >= 0 ? halfRight(r.s) : halfLeft(r.s)
-  const out = Math.max(Math.abs(r.lat) - half, r.past)
+  // A shoulder: the ground holds at the road bed for a metre past the edge before the cut or
+  // fill starts, so the terrain mesh, sampled on its own grid, can never rise through the edge.
+  const out = Math.max(Math.abs(r.lat) - half - SHOULDER, r.past)
   const bed = r.y - 0.14
-  const gap = Math.abs(n - bed)
-  // Cuts and fills about 1:1, so the bench reads as engineering, not a cliff or an apron.
-  const reach = Math.min(60, 3 + gap * (n < bed ? 1.0 : 1.1))
+  if (out <= 0) return bed
+  if (n < bed) {
+    // Fills fall away as a straight batter from the shoulder until they meet the natural slope.
+    // (An S-curve here held the ground level for metres past the road: a shelf over the drop.)
+    // The easing grows with distance, so at the shoulder it can't lift the ground above the bed.
+    return smax(n, bed - out * 1.5, Math.min(3, out * 0.8))
+  }
+  // Cuts rise gently out of a bench, about 1:1, so the boards and the coarse mesh have room.
+  const reach = Math.min(60, 3 + (n - bed) * 1.0)
   const w = 1 - sm(0, reach, out)
   return n + (bed - n) * w
+}
+
+const smax = (a: number, b: number, k: number) => {
+  const h = Math.max(k - Math.abs(a - b), 0) / k
+  return Math.max(a, b) + h * h * k * 0.25
 }
 
 /** Distance to the road, for the worker to sink coarse terrain under the fine strip. */

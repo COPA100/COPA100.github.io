@@ -54,10 +54,10 @@ export function signDefs(portrait: boolean): SignDef[] {
     const dx = (cx - ex) / dl
     const dz = (cz - ez) / dl
     const g = groundAt(cx, cz)
-    // A board is only as tall as what it says: no figure, a shorter board.
+    // A board is only as tall as what it says: no figure or no link, a shorter board.
     const tall = !!projects[i]?.figure
     const w = portrait ? 10 : 17
-    const h = portrait ? (tall ? 14.4 : 11.2) : tall ? 10 : 8.4
+    const h = portrait ? 8.8 + (tall ? 2.6 : 0) + (projects[i]?.link ? 1.2 : 0) : tall ? 10 : 8.4
     const lift = portrait ? 2.2 : 2.4
     out.push({ id: `p${i}`, kind: 'project', slot: i, c: [cx, apexY + lift + h / 2, cz], right: [-dz, 0, dx], w, h, ground: g, turn: dh > 0 ? 1 : -1, eye: [ex, f.y, ez] })
   })
@@ -67,7 +67,7 @@ export function signDefs(portrait: boolean): SignDef[] {
     const cx = f.x + f.rx * lat
     const cz = f.z + f.rz * lat
     const w = portrait ? 7.4 : 9.4
-    const h = portrait ? 8.4 : 5.4
+    const h = portrait ? 7.6 : 5.4
     out.push({ id: `m${i}`, kind: 'marker', slot: i, c: [cx, f.y + 2.3 + h / 2, cz], right: [f.tx, 0, f.tz], w, h, ground: f.y, turn: 1, eye: [f.x, f.y, f.z] })
   })
   return out

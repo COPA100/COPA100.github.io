@@ -48,7 +48,7 @@ export const projects: Project[] = [
   },
   {
     id: 'idea-x',
-    name: 'Idea X',
+    name: 'IdeaX',
     line: "The app that runs Ideathon, UVA's one-day pitch competition.",
     figure: { value: '160+', label: 'people used it on the day' },
     stack: ['React', 'Firebase', 'Vite', 'Playwright'],

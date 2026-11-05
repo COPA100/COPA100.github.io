@@ -53,6 +53,13 @@ function ProjectSign({ d }: { d: SignDef }) {
   const p = projects[d.slot]
   return (
     <>
+      {/* Light from the four lamps above, each its own pool, so they strike one by one. */}
+      <div className="sign-lamps" aria-hidden>
+        <i />
+        <i />
+        <i />
+        <i />
+      </div>
       <header className="sign-top">
         <Hairpin turn={d.turn} />
         {p.aside && <span className="sign-aside">{p.aside}</span>}

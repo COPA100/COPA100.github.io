@@ -11,7 +11,7 @@ import { COMMON } from './glsl'
 // slopes. At night the beams pick them out; at sunrise they
 // stand as silhouettes against the sky and the cloud sea.
 
-const KIND = { rail: 0, reflector: 1, tree: 2, rock: 3, iron: 4, wood: 5 } as const
+const KIND = { rail: 0, reflector: 1, tree: 2, rock: 3, iron: 4 } as const
 
 type Part = { g: THREE.BufferGeometry; k: number }
 
@@ -106,32 +106,6 @@ function build() {
     for (const t of [-1.1, 1.1]) box(0.1, 3.2, 0.1, KIND.iron, x + Math.cos(yaw) * t, y + 1.4, z - Math.sin(yaw) * t, yaw)
   }
 
-  // A bench at the rail beside the parking spot, facing out over the drop.
-  {
-    const s = PARK_S + 8
-    sample(s, f)
-    // Local +x along the road, local +z out over the drop.
-    const yaw = Math.atan2(-f.tz, f.tx)
-    const lat = halfRight(s) - 1.5
-    const [x, y, z] = at(s, lat)
-    const put = (w: number, h: number, d: number, k: number, lx: number, ly: number, lz: number, tilt = 0) => {
-      const g = new THREE.BoxGeometry(w, h, d)
-      g.rotateX(tilt)
-      g.translate(lx, ly, lz)
-      g.rotateY(yaw)
-      g.translate(x, y, z)
-      parts.push({ g, k })
-    }
-    // Slatted seat and back, on two iron frames.
-    for (const dz of [-0.2, 0, 0.2]) put(1.9, 0.05, 0.16, KIND.wood, 0, 0.46, dz)
-    for (const dy of [0.66, 0.84]) put(1.9, 0.12, 0.04, KIND.wood, 0, dy, -0.33, -0.18)
-    for (const dx of [-0.8, 0.8]) {
-      put(0.06, 0.46, 0.06, KIND.iron, dx, 0.23, 0.22)
-      put(0.06, 0.92, 0.06, KIND.iron, dx, 0.46, -0.28, -0.12)
-      put(0.06, 0.05, 0.58, KIND.iron, dx, 0.43, -0.02)
-    }
-  }
-
   // Boulders on the lip, outside the rail.
   for (let i = 0; i < 14; i++) {
     const s = END_S - 130 + rnd() * 135
@@ -219,8 +193,7 @@ const frag = /* glsl */ `
       : reflector ? ACCENT
       : vK < 2.5 ? vec3(0.035, 0.05, 0.04)
       : vK < 3.5 ? vec3(0.16, 0.15, 0.14)
-      : vK < 4.5 ? vec3(0.05, 0.05, 0.05)
-      : vec3(0.2, 0.13, 0.08);
+      : vec3(0.05, 0.05, 0.05);
 
     // Night: only what the lamps reach, plus a breath of starlight so shapes don't vanish.
     vec3 col = albedo * (0.02 + hl * (0.35 + 0.65 * abs(dot(N, normalize(uCarF)))));

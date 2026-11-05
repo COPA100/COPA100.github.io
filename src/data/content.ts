@@ -88,7 +88,7 @@ export const experience = [
     org: 'Liberty Mutual',
     role: 'Software Engineer Intern',
     when: 'Jun–Aug 2026, returning summer 2027',
-    note: 'I built a pipeline that matches crash telemetry from 57,000 company devices to IT support tickets, so investigations start from the likely cause instead of a search.',
+    note: 'I built a Python pipeline on Azure and Snowflake that matches crash telemetry from 57,000 company devices to IT tickets, cutting investigation time by 30%.',
   },
 ]
 

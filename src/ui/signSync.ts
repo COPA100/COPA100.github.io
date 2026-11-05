@@ -4,6 +4,9 @@
 import * as THREE from 'three'
 import { U, drive } from '../lib/state'
 import { corners, normalOf, type SignDef } from '../world/signs'
+import { sm } from '../world/road'
+import { HOLDS } from '../world/script'
+import { reducedMotion } from '../lib/tier'
 
 type Entry = {
   def: SignDef
@@ -16,6 +19,8 @@ type Entry = {
   shown: boolean
   lastOp: string
   normal: THREE.Vector3
+  struck: number // when the lamps were switched on, in seconds, or -1
+  lampOp: string[]
 }
 
 const entries = new Map<string, Entry>()
@@ -23,7 +28,7 @@ const entries = new Map<string, Entry>()
 export function registerSign(def: SignDef, el: HTMLElement, pxW: number, pxH: number, vis: (vh: number) => number) {
   const c = corners(def).map(([x, y, z]) => new THREE.Vector3(x, y, z))
   const centre = new THREE.Vector3(...def.c)
-  entries.set(def.id, { def, el, pxW, pxH, corners: c, centre, vis, shown: false, lastOp: '', normal: new THREE.Vector3(...normalOf(def)) })
+  entries.set(def.id, { def, el, pxW, pxH, corners: c, centre, vis, shown: false, lastOp: '', normal: new THREE.Vector3(...normalOf(def)), struck: -1, lampOp: ['', '', '', ''] })
   return () => {
     entries.delete(def.id)
   }
@@ -80,8 +85,40 @@ function beamOn(p: THREE.Vector3) {
   return (lobe(p, bx, by, bz) * 2) * U.uLights.value
 }
 
+// How a sodium lamp strikes: a stutter of flashes, a dip, then it climbs to full.
+function strike(t: number) {
+  if (t <= 0) return 0
+  if (t < 0.05) return 0.9
+  if (t < 0.12) return 0.08
+  if (t < 0.16) return 1
+  if (t < 0.3) return 0.2
+  if (t < 0.34) return 0.75
+  return Math.min(1, 0.45 + (t - 0.34) * 1.6)
+}
+
+// Each project board's lamps come on as the car pulls up to it, one after another, left to right.
+function updateLamps(en: Entry) {
+  const i = en.def.slot
+  const a = HOLDS[i][0]
+  // Just after the board has faded in, so the strike-up is seen, not missed in the approach.
+  const near = sm(a + 2, a + 9, drive.vh)
+  const now = performance.now() / 1000
+  if (near > 0.5 && en.struck < 0) en.struck = now
+  if (near < 0.15) en.struck = -1
+  for (let j = 0; j < 4; j++) {
+    const lv = reducedMotion ? near : en.struck < 0 ? 0 : strike(now - en.struck - j * 0.11)
+    U.uLamp.value[i * 4 + j] = lv
+    const op = lv.toFixed(2)
+    if (op !== en.lampOp[j]) {
+      en.el.style.setProperty(`--l${j}`, op)
+      en.lampOp[j] = op
+    }
+  }
+}
+
 export function updateSigns(cam: THREE.PerspectiveCamera, vw: number, vh: number) {
   entries.forEach((en) => {
+    if (en.def.kind === 'project') updateLamps(en)
     const { el } = en
     const vis = en.vis(drive.vh) * drive.vis
     // Never show a board from behind or edge-on.

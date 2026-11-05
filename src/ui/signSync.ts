@@ -5,7 +5,8 @@ import * as THREE from 'three'
 import { U, drive } from '../lib/state'
 import { corners, normalOf, type SignDef } from '../world/signs'
 import { sm } from '../world/road'
-import { HOLDS } from '../world/script'
+import { HOLDS, MARKER_VH } from '../world/script'
+import { boardIndex } from '../scene/Mounts'
 import { reducedMotion } from '../lib/tier'
 
 type Entry = {
@@ -96,12 +97,13 @@ function strike(t: number) {
   return Math.min(1, 0.45 + (t - 0.34) * 1.6)
 }
 
-// Each project board's lamps come on as the car pulls up to it, one after another, left to right.
+// Each board's lamps come on as the car pulls up to it, one after another, left to right.
 function updateLamps(en: Entry) {
-  const i = en.def.slot
-  const a = HOLDS[i][0]
+  const d = en.def
+  const i = boardIndex(d)
   // Just after the board has faded in, so the strike-up is seen, not missed in the approach.
-  const near = sm(a + 2, a + 9, drive.vh)
+  const a = d.kind === 'project' ? HOLDS[d.slot][0] + 2 : MARKER_VH[d.slot] - 58
+  const near = sm(a, a + 7, drive.vh)
   const now = performance.now() / 1000
   if (near > 0.5 && en.struck < 0) en.struck = now
   if (near < 0.15) en.struck = -1
@@ -118,7 +120,7 @@ function updateLamps(en: Entry) {
 
 export function updateSigns(cam: THREE.PerspectiveCamera, vw: number, vh: number) {
   entries.forEach((en) => {
-    if (en.def.kind === 'project') updateLamps(en)
+    updateLamps(en)
     const { el } = en
     const vis = en.vis(drive.vh) * drive.vis
     // Never show a board from behind or edge-on.

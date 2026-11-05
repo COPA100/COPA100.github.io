@@ -36,8 +36,8 @@ export const U = {
   // The opening survey pulse: radius in metres from the car, and how bright its leading edge is.
   uPulse: { value: 0 },
   uPulseA: { value: 0 },
-  // Billboard lamps, four per project board: 0 off, 1 fully struck.
-  uLamp: { value: new Float32Array(16) },
+  // Billboard lamps, four per board (four projects, then three experience markers): 0 off, 1 struck.
+  uLamp: { value: new Float32Array(28) },
   uSunDir: { value: new THREE.Vector3(0, 0, 1) },
   uEmberY: { value: 0 },
   uEmberA: { value: 0 },

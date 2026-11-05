@@ -5,12 +5,13 @@ import { HALF, nearest } from '../world/road'
 import { signDefs, type SignDef } from '../world/signs'
 import { COMMON } from './glsl'
 
-// The structure behind every HTML sign face. Project boards are real billboards: a steel frame,
-// I-beam posts, a catwalk with a railing, and four gooseneck lamps along the top that strike up
-// as the car arrives (their levels come from signSync, through U.uLamp). Experience markers keep
-// a plain back panel on two posts.
+// The structure behind every HTML sign face: a real billboard with a steel cabinet, I-beam posts,
+// a catwalk ledge, and four gooseneck lamps along the top that strike up as the car arrives
+// (their levels come from signSync, through U.uLamp).
 
 export const LAMPS_PER_BOARD = 4
+/** Lamp bank for a sign: projects first, then experience markers. */
+export const boardIndex = (d: SignDef) => (d.kind === 'project' ? d.slot : 4 + d.slot)
 
 // lamp: which lens this is (-1 for structure). board: whose lamps light it. spill: how much of
 // their light reaches it, highest right under the lamps.
@@ -22,7 +23,7 @@ function build(portrait: boolean) {
     const rot = Math.atan2(-s.right[2], s.right[0])
     const n = [-s.right[2], s.right[0]] as const // out of the face, toward the road
     // lx: along the board, ly: world height, ln: out of the face.
-    const board = s.kind === 'project' ? s.slot : -1
+    const board = boardIndex(s)
     const top = s.c[1] + s.h / 2
     const put = (w: number, h: number, d: number, lx: number, ly: number, ln: number, lamp = -1) => {
       const g = new THREE.BoxGeometry(w, h, d)
@@ -32,22 +33,12 @@ function build(portrait: boolean) {
       const spill = Math.max(0, 1 - Math.max(0, top + 1 - ly) / (s.h + 6)) * (ln < -0.5 ? 0.35 : 1)
       boxes.push({ g, lamp, board, spill })
     }
-    if (s.kind === 'project') billboard(s, put)
-    else marker(s, put)
+    billboard(s, put)
   }
   return merge(boxes)
 }
 
 type Put = (w: number, h: number, d: number, lx: number, ly: number, ln: number, lamp?: number) => void
-
-function marker(s: SignDef, put: Put) {
-  const bottom = s.c[1] - s.h / 2
-  put(s.w + 0.1, s.h + 0.1, 0.12, 0, s.c[1], -0.1)
-  for (const t of [-0.36, 0.36]) {
-    const base = Math.min(s.ground, bottom) - 3
-    put(0.22, bottom - base + 0.3, 0.22, s.w * t, (bottom + base) / 2 + 0.15, -0.25)
-  }
-}
 
 function billboard(s: SignDef, put: Put) {
   const top = s.c[1] + s.h / 2
@@ -95,7 +86,7 @@ function billboard(s: SignDef, put: Put) {
   // Gooseneck lamps on the top lip, reaching out over the face.
   for (let j = 0; j < LAMPS_PER_BOARD; j++) {
     const lx = (-0.375 + j * 0.25) * s.w
-    const id = s.slot * LAMPS_PER_BOARD + j
+    const id = boardIndex(s) * LAMPS_PER_BOARD + j
     put(0.09, 0.7, 0.09, lx, top + 0.7, -0.05)
     put(0.09, 0.09, 1.35, lx, top + 1.03, 0.6)
     put(0.6, 0.2, 0.42, lx, top + 0.95, 1.3)
@@ -147,7 +138,7 @@ export function Mounts({ portrait }: { portrait: boolean }) {
       fragmentShader: /* glsl */ `
         precision highp float;
         ${COMMON}
-        uniform float uLamp[${LAMPS_PER_BOARD * 4}];
+        uniform float uLamp[${LAMPS_PER_BOARD * 7}];
         varying vec3 vP; varying vec3 vN; varying float vLamp, vBoard, vSpill;
         void main() {
           float hl = headlights(vP);

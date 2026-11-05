@@ -78,7 +78,9 @@ export function buildStrip(step: number, cols: number): Buffers {
       const x = f.x + f.rx * offs[c]
       const z = f.z + f.rz * offs[c]
       position[k] = x
-      position[k + 1] = groundAt(x, z)
+      // The outermost column turns down into a skirt, so the strip's edge tucks under the coarse
+      // mountain instead of standing proud of it as a ledge.
+      position[k + 1] = groundAt(x, z) - (c === 0 || c === m - 1 ? 6 : 0)
       position[k + 2] = z
       const hx = (groundAt(x + e, z) - groundAt(x - e, z)) / (2 * e)
       const hz = (groundAt(x, z + e) - groundAt(x, z - e)) / (2 * e)
@@ -88,12 +90,27 @@ export function buildStrip(step: number, cols: number): Buffers {
       normal[k + 2] = -hz * l
     }
   }
-  const index = new Uint32Array((rows - 1) * (m - 1) * 6)
-  for (let r = 0, k = 0; r < rows - 1; r++) {
-    for (let c = 0; c < m - 1; c++, k += 6) {
+  // On the inside of a tight bend the cross-sections overlap, and the ribbon folds back over
+  // itself: those triangles come out flipped and stretched, standing up as panels across the road
+  // or vanishing from behind. Keep only triangles that face the same way as an unfolded strip and
+  // aren't stretched far beyond their neighbours.
+  const tri: number[] = []
+  const ok = (i: number, j: number, k: number) => {
+    const ax = position[i * 3], az = position[i * 3 + 2]
+    const bx = position[j * 3] - ax, bz = position[j * 3 + 2] - az
+    const cx = position[k * 3] - ax, cz = position[k * 3 + 2] - az
+    // Facing: an unfolded strip triangle winds one consistent way in plan view.
+    if (bz * cx - bx * cz <= 0.02) return false
+    const l2 = (x: number, z: number) => x * x + z * z
+    const longest = Math.max(l2(bx, bz), l2(cx, cz), l2(cx - bx, cz - bz))
+    return longest < 70 * 70
+  }
+  for (let r = 0; r < rows - 1; r++) {
+    for (let c = 0; c < m - 1; c++) {
       const a = r * m + c
-      index.set([a, a + 1, a + m, a + 1, a + m + 1, a + m], k)
+      if (ok(a, a + 1, a + m)) tri.push(a, a + 1, a + m)
+      if (ok(a + 1, a + m + 1, a + m)) tri.push(a + 1, a + m + 1, a + m)
     }
   }
-  return { position, normal, index }
+  return { position, normal, index: new Uint32Array(tri) }
 }

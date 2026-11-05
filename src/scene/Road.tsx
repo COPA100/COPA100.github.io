@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { quality } from '../lib/tier'
 import { U, drive } from '../lib/state'
-import { END_S, HALF, START_S, carLateral, frame, halfLeft, halfRight, sample } from '../world/road'
+import { END_S, HALF, START_S, carLateral, frame, halfLeft, halfRight, headingAt, sample, sm } from '../world/road'
 import { COMMON } from './glsl'
 
 // ---- Asphalt and paint ----
@@ -89,14 +89,21 @@ function roadGeometry() {
     // terrain can ever show at the edge.
     const L = -halfLeft(s)
     const R = halfRight(s)
+    // On the inside of a tight bend (the HackX hairpin turns on a 3 m radius) consecutive slices
+    // of the ribbon overlap, and a sloped skirt there would show as a dark seam across the road.
+    // So the inner skirt flattens away as the bend tightens.
+    const k = (headingAt(s + 1) - headingAt(s - 1)) / 2
+    const radius = 1 / Math.max(Math.abs(k), 1e-6)
+    const skirtL = k < 0 ? sm(halfLeft(s) + 2, halfLeft(s) + 10, radius) : 1
+    const skirtR = k > 0 ? sm(halfRight(s) + 2, halfRight(s) + 10, radius) : 1
     const cols: [number, number][] = [
-      [L - 0.5, -0.45],
+      [L - 0.5 * skirtL, 0.03 - 0.48 * skirtL],
       [L, 0.03],
       [-HALF, 0.03],
       [0, 0.03],
       [HALF, 0.03],
       [R, 0.03],
-      [R + 0.5, -0.45],
+      [R + 0.5 * skirtR, 0.03 - 0.48 * skirtR],
     ]
     cols.forEach(([t, dy]) => {
       pos.push(f.x + f.rx * t, f.y + dy, f.z + f.rz * t)

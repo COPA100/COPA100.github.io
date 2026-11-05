@@ -108,6 +108,9 @@ export const terrainMaterial = new THREE.ShaderMaterial({
   vertexShader: vert,
   fragmentShader: frag,
   uniforms: { ...U, uAppear: appear, uCloud: cloudK },
+  // Both faces: where the strip and the coarse mesh meet, a camera can catch a seam from below,
+  // and a one-sided surface would let it see straight through the mountain.
+  side: THREE.DoubleSide,
   extensions: { derivatives: true } as never,
 })
 

@@ -85,16 +85,29 @@ function roadGeometry() {
   for (let r = 0; r < rows; r++) {
     const s = Math.min(END_S, r * step)
     sample(s, f)
-    const cols = [-halfLeft(s), -HALF, 0, HALF, halfRight(s)]
-    cols.forEach((t) => {
-      pos.push(f.x + f.rx * t, f.y + 0.03, f.z + f.rz * t)
+    // Tarmac, plus a skirt each side that turns down under the shoulder, so no seam with the
+    // terrain can ever show at the edge.
+    const L = -halfLeft(s)
+    const R = halfRight(s)
+    const cols: [number, number][] = [
+      [L - 0.5, -0.45],
+      [L, 0.03],
+      [-HALF, 0.03],
+      [0, 0.03],
+      [HALF, 0.03],
+      [R, 0.03],
+      [R + 0.5, -0.45],
+    ]
+    cols.forEach(([t, dy]) => {
+      pos.push(f.x + f.rx * t, f.y + dy, f.z + f.rz * t)
       aS.push(s)
       aT.push(t)
     })
+    const n = cols.length
     if (r < rows - 1) {
-      for (let c = 0; c < 4; c++) {
-        const a = r * 5 + c
-        idx.push(a, a + 1, a + 5, a + 1, a + 6, a + 5)
+      for (let c = 0; c < n - 1; c++) {
+        const a = r * n + c
+        idx.push(a, a + 1, a + n, a + 1, a + n + 1, a + n)
       }
     }
   }

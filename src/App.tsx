@@ -6,6 +6,7 @@ import { low, reducedMotion } from './lib/tier'
 import { TRACK_VH } from './world/script'
 import { Signs } from './ui/Signs'
 import { Cluster, Contact, Hero, TopBar } from './ui/Hud'
+import { contact } from './data/content'
 
 const Scene = lazy(() => import('./scene/Scene'))
 
@@ -68,9 +69,15 @@ function NoWebGL() {
     <main className="p-8 text-[#e9e4d8]">
       <h1 className="text-5xl font-bold">Colin Park</h1>
       <p className="mt-2 text-xl">Software engineer. This site needs WebGL 2 to draw the mountain.</p>
-      <p className="mt-6">
-        <a className="underline" href="mailto:colinpark100@gmail.com">
-          colinpark100@gmail.com
+      <p className="mt-6 flex gap-6">
+        <a className="underline" href={`mailto:${contact.email}`}>
+          Email
+        </a>
+        <a className="underline" href={contact.github}>
+          GitHub
+        </a>
+        <a className="underline" href={contact.linkedin}>
+          LinkedIn
         </a>
       </p>
     </main>

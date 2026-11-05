@@ -104,6 +104,7 @@ export function Cluster() {
 
 export function TopBar() {
   const nameRef = useRef<HTMLAnchorElement>(null)
+  const linkRef = useRef<HTMLAnchorElement>(null)
   useEffect(() => {
     const tick = () => {
       // The contact block takes the top-left corner at the end, so the name steps aside for it.
@@ -111,6 +112,12 @@ export function TopBar() {
       if (nameRef.current) {
         nameRef.current.style.opacity = k.toFixed(3)
         nameRef.current.style.pointerEvents = k > 0.5 ? 'auto' : 'none'
+      }
+      // Once you've arrived at the contact block, a link to it is just a second "Contact".
+      const c = 1 - clamp01((drive.vh - (SUNRISE_VH[1] - 40)) / 20)
+      if (linkRef.current) {
+        linkRef.current.style.opacity = c.toFixed(3)
+        linkRef.current.style.pointerEvents = c > 0.5 ? 'auto' : 'none'
       }
     }
     gsap.ticker.add(tick)
@@ -139,6 +146,7 @@ export function TopBar() {
         {hero.name}
       </a>
       <a
+        ref={linkRef}
         href="#contact"
         className="topbar-link"
         onClick={(e) => {
@@ -185,9 +193,6 @@ export function Contact() {
           </a>
           <a className="contact-btn" href={contact.linkedin} target="_blank" rel="noreferrer">
             LinkedIn
-          </a>
-          <a className="contact-btn" href={contact.resume} onClick={(e) => e.preventDefault()}>
-            Resume
           </a>
         </div>
         <p className="contact-foot" data-rise>

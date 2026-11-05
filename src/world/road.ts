@@ -200,13 +200,17 @@ export function relief(x: number, z: number) {
   return k * amp * (125 * a * a + 40 * b - 55)
 }
 
+const SHOULDER = 1.1
+
 /** Ground height with the road benched into the mountain: cuts above, fills below. */
 export function groundAt(x: number, z: number) {
   const r = nearest(x, z, 70)
   if (r.d === Infinity) return natural(x, z) + relief(x, z)
   const n = natural(x, z) + relief(x, z) * sm(18, 66, r.d)
   const half = r.lat >= 0 ? halfRight(r.s) : halfLeft(r.s)
-  const out = Math.max(Math.abs(r.lat) - half, r.past)
+  // A shoulder: the ground holds at the road bed for a metre past the edge before the cut or
+  // fill starts, so the terrain mesh, sampled on its own grid, can never rise through the edge.
+  const out = Math.max(Math.abs(r.lat) - half - SHOULDER, r.past)
   const bed = r.y - 0.14
   const gap = Math.abs(n - bed)
   // Cuts and fills about 1:1, so the bench reads as engineering, not a cliff or an apron.

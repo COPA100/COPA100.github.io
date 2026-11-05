@@ -98,5 +98,4 @@ export const contact = {
   email: 'colinpark100@gmail.com',
   github: 'https://github.com/COPA100',
   linkedin: 'https://www.linkedin.com/in/colin-park1/',
-  resume: '#',
 }

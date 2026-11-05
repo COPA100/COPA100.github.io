@@ -12,6 +12,9 @@ import { Car } from './Car'
 
 // The sun comes up ahead of the parked car and a little to its right, so the car stands
 // dark against the brightest part of the sky.
+const ROAD_T = new THREE.Vector3()
+const ROAD_R = new THREE.Vector3()
+
 export const SUN_AZ = (() => {
   const f = sample(PARK_S)
   return f.heading + carYaw(PARK_S) + 0.2
@@ -255,12 +258,15 @@ export function Director() {
     st.car.set(f.x + f.rx * lat, f.y, f.z + f.rz * lat)
     if (st.s > END_S - 130) {
       st.car.y = Math.max(f.y, groundAt(st.car.x, st.car.z) + 0.14)
-      // In the lay-by the car sits on the ground it's parked on, cross-slope included, not level.
-      const e = 1.6
-      const hx = (groundAt(st.car.x + e, st.car.z) - groundAt(st.car.x - e, st.car.z)) / (2 * e)
-      const hz = (groundAt(st.car.x, st.car.z + e) - groundAt(st.car.x, st.car.z - e)) / (2 * e)
+      // In the lay-by the car sits on the road surface it's parked on: turned across the road, it
+      // takes the road's grade as a side-to-side lean instead of sitting level. The surface normal
+      // comes from the road itself, which is smooth, not from terrain samples around the car,
+      // which jump as they cross the road edge and made the car twitch.
       const k = sm(END_S - 130, END_S - 95, st.s)
-      st.tmp.set(-hx, 1, -hz).normalize()
+      const tl = Math.hypot(1, f.grade)
+      ROAD_T.set(f.tx / tl, f.grade / tl, f.tz / tl) // along the road, up the grade
+      ROAD_R.set(f.rx, 0, f.rz)
+      st.tmp.crossVectors(ROAD_R, ROAD_T).normalize() // the road surface's normal
       st.Up.lerp(st.tmp, k).normalize()
       st.F.addScaledVector(st.Up, -st.F.dot(st.Up)).normalize()
       st.R.crossVectors(st.F, st.Up).normalize()
@@ -277,7 +283,10 @@ export function Director() {
       st.m.makeBasis(st.R, st.Up, st.tmp.copy(st.F).negate())
       car.quaternion.setFromRotationMatrix(st.m)
       // Squat on acceleration, a faint engine shudder at idle.
-      const squat = reducedMotion ? 0 : Math.max(-0.016, Math.min(0.02, st.accel * 0.0004))
+      // Pulling into the lay-by it creeps in short stop-starts as the wheel scrolls, and the squat
+      // would nod it back and forth, so it settles out there.
+      const settle = 1 - sm(END_S - 140, END_S - 100, st.s)
+      const squat = reducedMotion ? 0 : Math.max(-0.016, Math.min(0.02, st.accel * 0.0004)) * settle
       car.rotateX(squat)
       const idle = reducedMotion ? 0 : (1 - Math.min(1, speed * 6)) * Math.sin(time * 31) * 0.0012
       car.position.copy(st.car)
@@ -365,7 +374,7 @@ export function Director() {
     U.uDpr.value = state.gl.getPixelRatio()
     U.uPx.value = (Math.tan((cam.fov * Math.PI) / 360) * 2 * 0.8) / size.height
     drive.vis = vis
-    if (import.meta.env.DEV) (window as unknown as { __dbg: unknown }).__dbg = { cam: pos.toArray().map(Math.round), tgt: tgt.toArray().map(Math.round), car: st.car.toArray().map(Math.round), s: Math.round(st.s), vh: Math.round(vh) }
+    if (import.meta.env.DEV) (window as unknown as { __dbg: unknown }).__dbg = { cam: pos.toArray().map(Math.round), tgt: tgt.toArray().map(Math.round), car: st.car.toArray().map(Math.round), s: Math.round(st.s), vh: Math.round(vh), up: st.Up.toArray().map((v) => +v.toFixed(4)), f: st.F.toArray().map((v) => +v.toFixed(4)) }
     updateSigns(cam, size.width, size.height)
   }, 0)
 

@@ -8,6 +8,7 @@ import { sm } from '../world/road'
 import { HOLDS, MARKER_VH } from '../world/script'
 import { boardIndex } from '../scene/Mounts'
 import { reducedMotion } from '../lib/tier'
+import { meshGround } from '../world/build'
 
 type Entry = {
   def: SignDef
@@ -21,6 +22,7 @@ type Entry = {
   lastOp: string
   normal: THREE.Vector3
   struck: number // when the lamps were switched on, in seconds, or -1
+  clear: number // 0..1, eased: how much of the board the camera can actually see past the terrain
   lampOp: string[]
 }
 
@@ -29,7 +31,7 @@ const entries = new Map<string, Entry>()
 export function registerSign(def: SignDef, el: HTMLElement, pxW: number, pxH: number, vis: (vh: number) => number) {
   const c = corners(def).map(([x, y, z]) => new THREE.Vector3(x, y, z))
   const centre = new THREE.Vector3(...def.c)
-  entries.set(def.id, { def, el, pxW, pxH, corners: c, centre, vis, shown: false, lastOp: '', normal: new THREE.Vector3(...normalOf(def)), struck: -1, lampOp: ['', '', '', ''] })
+  entries.set(def.id, { def, el, pxW, pxH, corners: c, centre, vis, shown: false, lastOp: '', normal: new THREE.Vector3(...normalOf(def)), struck: -1, lampOp: ['', '', '', ''], clear: 1 })
   return () => {
     entries.delete(def.id)
   }
@@ -118,11 +120,53 @@ function updateLamps(en: Entry) {
   }
 }
 
+// The boards are HTML drawn over the canvas, so terrain can't hide them by itself. Sight rays from
+// the camera to points across the face tell how much of the board a hill is standing in front of.
+const probe = new THREE.Vector3()
+const FACE_PTS = [
+  [-0.42, -0.42],
+  [0.42, -0.42],
+  [0, -0.2],
+  [-0.42, 0.42],
+  [0.42, 0.42],
+  [0, 0.2],
+] as const
+function visibleShare(en: Entry, cam: THREE.Vector3) {
+  const d = en.def
+  let seen = 0
+  for (const [u, v] of FACE_PTS) {
+    const px = d.c[0] + d.right[0] * d.w * u
+    const py = d.c[1] + d.h * v
+    const pz = d.c[2] + d.right[2] * d.w * u
+    let hit = false
+    for (let k = 1; k < 12 && !hit; k++) {
+      const t = k / 12
+      probe.set(cam.x + (px - cam.x) * t, cam.y + (py - cam.y) * t, cam.z + (pz - cam.z) * t)
+      // A metre of slack: the rendered mesh sits a little under the true ground between vertices.
+      if (meshGround(probe.x, probe.z) > probe.y + 1.0) hit = true
+    }
+    if (!hit) seen++
+  }
+  return seen / FACE_PTS.length
+}
+
 export function updateSigns(cam: THREE.PerspectiveCamera, vw: number, vh: number) {
   entries.forEach((en) => {
     updateLamps(en)
     const { el } = en
-    const vis = en.vis(drive.vh) * drive.vis
+    let vis = en.vis(drive.vh) * drive.vis
+    if (vis > 0.004) {
+      // Eased, so a ridge sliding across the view fades the board rather than popping it.
+      const target = visibleShare(en, cam.position)
+      en.clear += (target - en.clear) * (target < en.clear ? 0.35 : 0.12)
+      // Once the car has settled at a board the shot is composed for it: always show it in full.
+      const d = en.def
+      const settled =
+        d.kind === 'project'
+          ? sm(HOLDS[d.slot][0] + 8, HOLDS[d.slot][0] + 14, drive.vh) * (1 - sm(HOLDS[d.slot][1] - 4, HOLDS[d.slot][1] + 2, drive.vh))
+          : sm(MARKER_VH[d.slot] - 30, MARKER_VH[d.slot] - 20, drive.vh) * (1 - sm(MARKER_VH[d.slot] + 20, MARKER_VH[d.slot] + 30, drive.vh))
+      vis *= Math.max(settled, Math.min(1, Math.max(0, (en.clear - 0.5) * 2)))
+    }
     // Never show a board from behind or edge-on.
     const facing = tmp.copy(cam.position).sub(en.centre).normalize().dot(en.normal)
     let ok = vis > 0.004 && facing > 0.2

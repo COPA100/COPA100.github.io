@@ -13,9 +13,53 @@ const BOARDS = [...signDefs(false), ...signDefs(true)].map((d) => ({
   cap: d.c[1] - d.h / 2 - 1.6,
 }))
 
+// And a clear line of sight to every project board from where the car waits under it: a wedge
+// from a point behind the waiting car out to the board's lower edge. Ground inside the wedge stays
+// below the sightline, so no hill stands between the camera and a board. (The boards are HTML
+// drawn over the scene, so terrain in front of one would otherwise appear behind it.)
+const SIGHTS = [...signDefs(false), ...signDefs(true)]
+  .filter((d) => d.kind === 'project')
+  .map((d) => {
+    const [ex, ey, ez] = d.eye
+    let fx = d.c[0] - ex
+    let fz = d.c[2] - ez
+    const fl = Math.hypot(fx, fz)
+    fx /= fl
+    fz /= fl
+    const back = 34
+    const ax = ex - fx * back
+    const az = ez - fz * back
+    const hw = d.w / 2 + 2
+    return {
+      a: [ax, ey + 1.0, az] as const,
+      l: [d.c[0] - d.right[0] * hw, d.c[2] - d.right[2] * hw] as const,
+      r: [d.c[0] + d.right[0] * hw, d.c[2] + d.right[2] * hw] as const,
+      len: fl + back,
+      f: [fx, fz] as const,
+      bottom: d.c[1] - d.h / 2 - 1.6,
+    }
+  })
+
+const side = (ax: number, az: number, bx: number, bz: number, px: number, pz: number) => (bx - ax) * (pz - az) - (bz - az) * (px - ax)
+
 /** The ground as meshed: the true ground, but never above a board's clearance. */
 export function meshGround(x: number, z: number) {
   let y = groundAt(x, z)
+  for (const v of SIGHTS) {
+    const [ax, ay, az] = v.a
+    // Inside the plan-view triangle from the apex to the board's widened bottom edge?
+    const s1 = side(ax, az, v.l[0], v.l[1], x, z)
+    const s2 = side(v.l[0], v.l[1], v.r[0], v.r[1], x, z)
+    const s3 = side(v.r[0], v.r[1], ax, az, x, z)
+    if ((s1 < 0 || s2 < 0 || s3 < 0) && (s1 > 0 || s2 > 0 || s3 > 0)) continue
+    const t = Math.min(1, Math.max(0, ((x - ax) * v.f[0] + (z - az) * v.f[1]) / v.len))
+    const cap = ay + (v.bottom - ay) * t - 0.8
+    if (cap >= y) continue
+    // Never dig out the ground under a road (another leg of the climb can cross the wedge).
+    const r = nearest(x, z, 16)
+    if (r.d < 12 && r.y - 0.2 > cap) continue
+    y = cap
+  }
   for (const b of BOARDS) {
     const dx = x - b.c[0]
     const dz = z - b.c[2]
